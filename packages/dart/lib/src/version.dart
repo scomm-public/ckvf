@@ -1,3 +1,4 @@
+import 'registries.dart';
 import 'types.dart';
 
 const readVersions = [ckvfContainerVersion];
@@ -31,10 +32,7 @@ List<String> supportedKeyEncodings() => List<String>.from(const [
       'pkcs12',
     ]);
 
-List<String> supportedUnlockMethods() => List<String>.from(const [
-      'password-argon2id',
-      'device-wrap-a256gcm',
-    ]);
+List<String> supportedUnlockMethods() => List<String>.from(unlockMethods);
 
 List<String> supportedOperations() => const [
       'ADD_KEY',

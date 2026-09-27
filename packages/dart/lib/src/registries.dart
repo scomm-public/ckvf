@@ -5,7 +5,18 @@ const algorithmSuites = ['rsa', 'ecc', 'pqc'];
 const keyEncodings = ['openpgp-tsk', 'pkcs8', 'pkcs12'];
 const keyStatuses = ['active', 'retired', 'revoked', 'compromised'];
 const keyPurposes = ['sign', 'encrypt', 'auth'];
-const unlockMethods = ['password-argon2id', 'device-wrap-a256gcm'];
+const unlockMethods = [
+  'password-argon2id',
+  'device-wrap-a256gcm',
+  'password-oprf-argon2id',
+  'recovery-code-oprf-argon2id',
+];
+
+/// Methods that need a host POPRF evaluation (profiles/pepper-oprf.md).
+const pepperUnlockMethods = [
+  'password-oprf-argon2id',
+  'recovery-code-oprf-argon2id',
+];
 const aeadAlgorithms = ['A256GCM'];
 const kdfs = ['Argon2id'];
 const mskAlgorithms = ['Ed25519'];

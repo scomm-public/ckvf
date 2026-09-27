@@ -33,6 +33,7 @@ export 'src/openpgp.dart';
 export 'src/operations.dart';
 export 'src/pkcs8.dart';
 export 'src/registries.dart';
+export 'src/slots.dart';
 export 'src/types.dart';
 export 'src/validate.dart';
 export 'src/vault.dart';

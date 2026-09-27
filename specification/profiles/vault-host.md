@@ -28,6 +28,7 @@ grant.
 
 | Method | Path | Authorization |
 | --- | --- | --- |
+| GET | `/v1/id/oprf/key` | none |
 | POST | `/v1/id/oprf/evaluate` | none; rate-limited |
 | POST | `/v1/vault/open` | `vault_open` grant + MSK proof |
 | POST | `/v1/vault/{vault_id}/msk` | `replace_msk` grant + proof by the new MSK |
@@ -35,13 +36,19 @@ grant.
 | GET | `/v1/vault/{vault_id}/current` | read authorization (§4) |
 | GET | `/v1/vault/{vault_id}/generation/{n}` | read authorization (§4) |
 | GET | `/v1/vault/{vault_id}/pending-mutations` | read authorization (§4) |
+| GET | `/v1/pw-oprf/keys` | none |
 | POST | `/v1/pw-oprf/evaluate` | read authorization (§4); rate-limited per `vault_id` |
 
 ### 2.1 Identity OPRF
 
-`POST /v1/id/oprf/evaluate` with `{ "blind" }` returns `{ "evaluation" }`.
-RFC 9497 OPRF mode `0x00`, `ristretto255-SHA512`. `identity_id` is the first
-32 octets of Finalize over the canonical mailbox, in hex. The info string
+`POST /v1/id/oprf/evaluate` with `{ "blind" }` returns
+`{ "evaluation", "proof" }`. RFC 9497 `ristretto255-SHA512`; the evaluation
+is the mode `0x00` output and `proof` is the VOPRF DLEQ proof against the
+key from `GET /v1/id/oprf/key` (`{ "suite", "public_key" }`). Finalize is the
+same in both modes, so `identity_id` does not depend on whether the client
+verifies. Clients SHOULD verify the proof against a pinned public key.
+`identity_id` is the first 32 octets of Finalize over the canonical mailbox,
+in hex. The info string
 `Scomm/Pubkey/identity/v1` is a label only and is not mixed into Finalize.
 The OPRF secret stays on this host.
 

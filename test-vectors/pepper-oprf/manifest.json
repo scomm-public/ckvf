@@ -1,0 +1,43 @@
+{
+  "version": "0.1.0",
+  "profile": "profiles/pepper-oprf.md",
+  "banner": "TEST KEY — NEVER USE IN PRODUCTION",
+  "poprf": "poprf.json",
+  "vectors": [
+    {
+      "id": "password-oprf-unlock",
+      "expect": "pass",
+      "error": null
+    },
+    {
+      "id": "recovery-code-oprf-unlock",
+      "expect": "pass",
+      "error": null
+    },
+    {
+      "id": "pepper-wrong-rwd",
+      "expect": "fail",
+      "error": "ERR_WRAP_DECRYPT"
+    },
+    {
+      "id": "pepper-kdf-below-floor",
+      "expect": "fail",
+      "error": "ERR_KDF"
+    },
+    {
+      "id": "pepper-missing-oprf",
+      "expect": "fail",
+      "error": "ERR_FORMAT"
+    },
+    {
+      "id": "device-wrap-unlock",
+      "expect": "pass",
+      "error": null
+    },
+    {
+      "id": "device-wrap-with-kdf",
+      "expect": "fail",
+      "error": "ERR_KDF"
+    }
+  ]
+}

@@ -109,12 +109,42 @@ class WrapParams {
       );
 }
 
+/// Pinned host key of a `*-oprf-argon2id` slot (profiles/pepper-oprf.md).
+class OprfParams {
+  OprfParams({
+    this.suite = 'ristretto255-SHA512',
+    this.mode = 'poprf',
+    required this.kid,
+    required this.publicKey,
+  });
+
+  final String suite;
+  final String mode;
+  final String kid;
+  final String publicKey;
+
+  Map<String, dynamic> toJson() => {
+        'suite': suite,
+        'mode': mode,
+        'kid': kid,
+        'public_key': publicKey,
+      };
+
+  factory OprfParams.fromJson(Map<String, dynamic> json) => OprfParams(
+        suite: json['suite'] as String,
+        mode: json['mode'] as String,
+        kid: json['kid'] as String,
+        publicKey: json['public_key'] as String,
+      );
+}
+
 class UnlockSlot {
   UnlockSlot({
     required this.slotId,
     required this.method,
     required this.createdAt,
     this.kdf,
+    this.oprf,
     required this.wrap,
   });
 
@@ -122,6 +152,7 @@ class UnlockSlot {
   final UnlockMethod method;
   final String createdAt;
   final KdfParams? kdf;
+  final OprfParams? oprf;
   final WrapParams wrap;
 
   Map<String, dynamic> toJson() => {
@@ -129,6 +160,7 @@ class UnlockSlot {
         'method': method,
         'created_at': createdAt,
         if (kdf != null) 'kdf': kdf!.toJson(),
+        if (oprf != null) 'oprf': oprf!.toJson(),
         'wrap': wrap.toJson(),
       };
 
@@ -138,6 +170,10 @@ class UnlockSlot {
         createdAt: json['created_at'] as String,
         kdf: json['kdf'] is Map
             ? KdfParams.fromJson(Map<String, dynamic>.from(json['kdf'] as Map))
+            : null,
+        oprf: json['oprf'] is Map
+            ? OprfParams.fromJson(
+                Map<String, dynamic>.from(json['oprf'] as Map))
             : null,
         wrap: WrapParams.fromJson(Map<String, dynamic>.from(json['wrap'] as Map)),
       );

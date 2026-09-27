@@ -20,6 +20,9 @@ Do **not** pin `main`.
 | `manifest.json` | Vector ids, expect pass/fail, optional error code |
 | `vectors/<id>.json` | Fixture for that id |
 | `keys/` | Extra test-key notes |
+| `pepper-oprf/` | [pepper-oprf](../specification/profiles/pepper-oprf.md) and device-wrap slots: `poprf.json` transcripts, own `manifest.json` and `vectors/` |
+
+`pepper-oprf/` is a separate set so readers without these unlock methods can still run the core manifest. Regenerate with `npm run build && node packages/node/dist/generate-pepper-vectors.js` in `packages/js`, then `dart run tool/pepper_vectors.dart` in `packages/dart`. Pepper fixtures use the profile floor `m=65536`, `t=3`, `p=1`.
 
 Password used by encrypted fixtures: `CKVF-TEST-PASSWORD`.
 

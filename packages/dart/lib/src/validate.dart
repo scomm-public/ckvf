@@ -124,17 +124,29 @@ UnlockSlot validateUnlockSlot(
   ParserLimits limits = defaultLimits,
 ]) {
   final o = asJsonMap(raw, 'unlock slot');
-  rejectUnknownKeys(o, const ['slot_id', 'method', 'created_at', 'kdf', 'wrap']);
+  rejectUnknownKeys(
+    o,
+    const ['slot_id', 'method', 'created_at', 'kdf', 'oprf', 'wrap'],
+  );
   if (o['slot_id'] is! String) fail('ERR_SLOT_ID', 'slot_id');
   base64urlToBytes(o['slot_id'] as String, 16);
   final method = o['method'];
-  if (method != 'password-argon2id' && method != 'device-wrap-a256gcm') {
+  if (!unlockMethods.contains(method)) {
     fail('ERR_NOT_IMPLEMENTED', 'unlock method $method');
   }
   if (o['created_at'] is! String || !isRfc3339Z(o['created_at'] as String)) {
     fail('ERR_FORMAT', 'created_at');
   }
-  if (method == 'password-argon2id') {
+  final pepper = pepperUnlockMethods.contains(method);
+  if (pepper) {
+    _validateOprf(o['oprf']);
+  } else if (o.containsKey('oprf')) {
+    fail('ERR_FORMAT', 'oprf is only allowed on *-oprf-argon2id slots');
+  }
+  if (method == 'device-wrap-a256gcm' && o.containsKey('kdf')) {
+    fail('ERR_KDF', 'device-wrap slots carry no kdf');
+  }
+  if (method == 'password-argon2id' || pepper) {
     if (o['kdf'] is! Map) fail('ERR_KDF', 'missing kdf');
     final k = Map<String, dynamic>.from(o['kdf'] as Map);
     rejectUnknownKeys(k, const ['alg', 'salt', 'm', 't', 'p', 'key_length']);
@@ -157,6 +169,9 @@ UnlockSlot validateUnlockSlot(
         p > limits.maxArgon2Parallelism) {
       fail('ERR_KDF', 'Argon2id parameters exceed parser limits');
     }
+    if (pepper && (m < pepperMinArgon2id.m || t < pepperMinArgon2id.t)) {
+      fail('ERR_KDF', 'pepper slots need m >= 65536 and t >= 3');
+    }
   }
   if (o['wrap'] is! Map) fail('ERR_FORMAT', 'wrap');
   final w = Map<String, dynamic>.from(o['wrap'] as Map);
@@ -171,6 +186,22 @@ UnlockSlot validateUnlockSlot(
   base64urlToBytes(w['ciphertext'] as String, 32);
   base64urlToBytes(w['tag'] as String, 16);
   return UnlockSlot.fromJson(o);
+}
+
+void _validateOprf(Object? raw) {
+  if (raw is! Map) fail('ERR_FORMAT', 'oprf is required');
+  final o = Map<String, dynamic>.from(raw);
+  rejectUnknownKeys(o, const ['suite', 'mode', 'kid', 'public_key']);
+  if (o['suite'] != 'ristretto255-SHA512') {
+    fail('ERR_NOT_IMPLEMENTED', 'oprf suite');
+  }
+  if (o['mode'] != 'poprf') fail('ERR_NOT_IMPLEMENTED', 'oprf mode');
+  final kid = o['kid'];
+  if (kid is! String || kid.isEmpty || kid.length > 64) {
+    fail('ERR_FORMAT', 'oprf kid');
+  }
+  if (o['public_key'] is! String) fail('ERR_FORMAT', 'oprf public_key');
+  base64urlToBytes(o['public_key'] as String, 32);
 }
 
 VaultPayload validatePayloadShape(

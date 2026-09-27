@@ -73,5 +73,8 @@ class Argon2idParams {
 
 const recommendedArgon2id = Argon2idParams(m: 65536, t: 3, p: 4);
 
+/// Floor for `*-oprf-argon2id` slots (profiles/pepper-oprf.md §1).
+const pepperMinArgon2id = Argon2idParams(m: 65536, t: 3, p: 1);
+
 /// Legal for tests/CI; still meets SPEC §6.5 minima.
 const testArgon2id = Argon2idParams(m: 16384, t: 2, p: 1);

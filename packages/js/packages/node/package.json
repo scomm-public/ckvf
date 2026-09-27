@@ -27,7 +27,8 @@
     "hash-wasm": "^4.12.0"
   },
   "devDependencies": {
-    "@ckvf/browser": "0.1.0"
+    "@ckvf/browser": "0.1.0",
+    "@noble/curves": "^2.4.0"
   },
   "ckvf": {
     "specification": "draft-0.1",

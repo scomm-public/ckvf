@@ -1,0 +1,63 @@
+{
+  "id": "device-wrap-with-kdf",
+  "expect": "fail",
+  "error": "ERR_KDF",
+  "container": {
+    "ciphertext": "pyJpQLomch268p05zIEMdaEv49OXhgEluHo_cVrhGO2CSLooYRqxoLppsF68_H-7DpIbZgUnBZ2hx9yXnzZF59TWb_D8dV086Tu4bdXAFOdvAlqzbH34zEbur7KOXqn9jjknB2ykJW23zGSd_llpjyZGXqxsTe4JGv7y6Dj7ZdBDFXTv0lhw6BKxklvkYK1J-mwM2VKlRqMemQMKK4ZhVxk0KLQKuTFiTPc6l7soYoQay43p6o4iwpWcWF1VdTuis-Jq3A9lOLkSIQGxU1tIzkfk55VQMcv8BWbjr4nnYBBZzFdLC5Lrpji9dvtmnE_i1l2qrt66d0lHzdogM787IBYQh9BVR3lto9fMns4STT34XZ5zr3OB5voPXVNlzz4f72nPkwyws6mATP1IKXRCvP1om2tDpUpu9N4i2zAUOhwFYsC8_Ia67xpO12E3t8aJvtbR0DO7UXf8WtCFbJ7RmZvXZg3PXsDyzKbNkJ_mNha3ovNnAkk7jrXlMmXdnPaa8IEHTkE16W8rgYnUEFND9kaXYHsUYahi7mbuQBtni4YwnHsFUx-X5Rfk_JnTNgQSuQfFOI3QbhbPFkSSOjnsabgpAZ0fIgwjvh3zwKzBUgPYXdSqTcZVIJ9Tm45xJoMQBg-SwrqXAMbDihC7h6dbWLRTOACMyTwb29svpm2w4ACKBPkEGk3QLJ3fMqta9FO-aAvzMjprDjSEMzQT7qgCAzXsooW8yz27CSUDtQ",
+    "critical_extensions": [],
+    "crypto": {
+      "aead": "A256GCM",
+      "iv": "jAZb4vLDaOIb1z7O"
+    },
+    "extensions": [],
+    "format": "CKVF",
+    "generation": 2,
+    "generation_hash": "F48IfjncHLMKgPnIKmRncZy3BXWVnZ88FI6jZ_36pBg",
+    "previous_generation_hash": "nBhO1kx1qS0HeC38T_11CULnzSVBF49T3ne64hl7BY0",
+    "tag": "K3XB7fT5RY5nb4OmMzIVcg",
+    "unlock_slots": [
+      {
+        "created_at": "2026-09-27T00:00:00Z",
+        "kdf": {
+          "alg": "Argon2id",
+          "key_length": 32,
+          "m": 16384,
+          "p": 1,
+          "salt": "cj-WJM5TMOmEJ1EI0_FxFA",
+          "t": 2
+        },
+        "method": "password-argon2id",
+        "slot_id": "qsVK6H8L8tblkbiJCvFosA",
+        "wrap": {
+          "alg": "A256GCM",
+          "ciphertext": "WSicbbOSH2W4z2_WZFP8H9LmuRpvVA2S-QtH45zyQhk",
+          "iv": "QirbBLSMukeNUn3-",
+          "tag": "rTKAGjis35TxxbmcE2mhbQ"
+        }
+      },
+      {
+        "created_at": "2026-09-27T00:00:00Z",
+        "method": "device-wrap-a256gcm",
+        "slot_id": "wMHCw8TFxsfIycrLzM3Ozw",
+        "wrap": {
+          "alg": "A256GCM",
+          "ciphertext": "469Ww-ArMm_y27uYR0HAwf2XUdjhLnDlpsxavJ8jFsQ",
+          "iv": "pNuVeJ90oobIZxqs",
+          "tag": "nC7mrP0Gge32SBYweUbIig"
+        },
+        "kdf": {
+          "alg": "Argon2id",
+          "key_length": 32,
+          "m": 16384,
+          "p": 1,
+          "salt": "5hMBwcw_pTjTm_nwK2BkYA",
+          "t": 2
+        }
+      }
+    ],
+    "vault_id": "AQIDBAUGBwgJCgsMDQ4PEA",
+    "version": "1.0"
+  },
+  "slot_id": "wMHCw8TFxsfIycrLzM3Ozw",
+  "device_kek": "0NHS09TV1tfY2drb3N3e3-Dh4uPk5ebn6Onq6-zt7u8"
+}

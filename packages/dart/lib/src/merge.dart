@@ -7,8 +7,10 @@ MergeResult mergePayloads(
   VaultPayload a,
   VaultPayload b,
   List<UnlockSlot> slotsA,
-  List<UnlockSlot> slotsB,
-) {
+  List<UnlockSlot> slotsB, {
+  int generationA = 0,
+  int generationB = 0,
+}) {
   if (a.identity.identityId != b.identity.identityId) {
     fail('ERR_IDENTITY_MISMATCH');
   }
@@ -25,7 +27,13 @@ MergeResult mergePayloads(
   final keys = _mergeKeys(a.keys, b.keys, a.tombstones, b.tombstones, conflicts);
   final preferred = _mergePreferred(a.preferredKeys, b.preferredKeys, keys, conflicts);
   final tombstones = _unionTombstones(a.tombstones, b.tombstones);
-  final slots = _mergeSlots(slotsA, slotsB, conflicts);
+  final slots = _mergeSlots(
+    slotsA,
+    slotsB,
+    conflicts,
+    generationA,
+    generationB,
+  );
   final created = a.metadata.createdAt.compareTo(b.metadata.createdAt) <= 0
       ? a.metadata.createdAt
       : b.metadata.createdAt;
@@ -159,6 +167,8 @@ List<UnlockSlot> _mergeSlots(
   List<UnlockSlot> a,
   List<UnlockSlot> b,
   List<MergeConflict> conflicts,
+  int generationA,
+  int generationB,
 ) {
   final map = <String, UnlockSlot>{};
   for (final s in a) {
@@ -170,13 +180,23 @@ List<UnlockSlot> _mergeSlots(
       map[s.slotId] = s;
       continue;
     }
-    if (slotFingerprint(existing) != slotFingerprint(s)) {
-      conflicts.add(MergeConflict(code: 'ERR_MERGE_SLOT', message: s.slotId));
-      fail('ERR_MERGE_SLOT', 'slot ${s.slotId} differs');
+    if (slotFingerprint(existing) == slotFingerprint(s)) continue;
+    if (_isKidRewrap(existing, s) && generationA != generationB) {
+      if (generationB > generationA) map[s.slotId] = s;
+      continue;
     }
+    conflicts.add(MergeConflict(code: 'ERR_MERGE_SLOT', message: s.slotId));
+    fail('ERR_MERGE_SLOT', 'slot ${s.slotId} differs');
   }
   return map.values.toList();
 }
+
+/// Same pepper slot rewrapped under another host `kid` (pepper-oprf.md §6).
+bool _isKidRewrap(UnlockSlot x, UnlockSlot y) =>
+    x.method == y.method &&
+    x.oprf != null &&
+    y.oprf != null &&
+    x.oprf!.kid != y.oprf!.kid;
 
 Tombstone? _tombstoneFor(List<Tombstone> tombs, String id) {
   for (final t in tombs) {

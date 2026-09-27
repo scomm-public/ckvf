@@ -26,6 +26,7 @@ class CreateVaultOptions {
     this.now,
     this.kdf,
     this.limits,
+    this.vaultId,
   });
 
   final IdentityType identityType;
@@ -35,6 +36,9 @@ class CreateVaultOptions {
   final String? now;
   final Argon2idParams? kdf;
   final ParserLimits? limits;
+
+  /// 16-byte base64url. Random when null; set only for vectors and tests.
+  final String? vaultId;
 }
 
 Future<UnlockedVault> createVault(CreateVaultOptions opts) async {
@@ -67,7 +71,9 @@ Future<UnlockedVault> createVault(CreateVaultOptions opts) async {
     crypto,
     payload,
     vek,
-    vaultId: bytesToBase64url(crypto.randomBytes(16)),
+    vaultId: opts.vaultId != null
+        ? bytesToBase64url(base64urlToBytes(opts.vaultId!, 16))
+        : bytesToBase64url(crypto.randomBytes(16)),
     generation: 1,
     previousGenerationHash: null,
     slots: const [],
@@ -84,6 +90,27 @@ Future<UnlockedVault> openVault(
   required CkvfCrypto crypto,
   String? slotId,
   ParserLimits? limits,
+}) {
+  return openVaultWith(
+    containerOrJson,
+    crypto: crypto,
+    limits: limits,
+    unwrap: (container) => _unwrapVek(
+      crypto,
+      container.vaultId,
+      _selectPasswordSlot(container, slotId),
+      password,
+    ),
+  );
+}
+
+/// Validates the container, obtains the VEK from [unwrap] (any slot method),
+/// and decrypts the payload. MUST NOT rewrite on open.
+Future<UnlockedVault> openVaultWith(
+  Object containerOrJson, {
+  required CkvfCrypto crypto,
+  required Future<Uint8List> Function(VaultContainer container) unwrap,
+  ParserLimits? limits,
 }) async {
   final resolvedLimits = limits ?? defaultLimits;
   final container = containerOrJson is String
@@ -95,8 +122,7 @@ Future<UnlockedVault> openVault(
   if (container.criticalExtensions.isNotEmpty) fail('ERR_CRITICAL_EXTENSION');
   final expected = await computeGenerationHash(container, crypto);
   if (expected != container.generationHash) fail('ERR_GENERATION_HASH');
-  final slot = _selectPasswordSlot(container, slotId);
-  final vek = await _unwrapVek(crypto, container.vaultId, slot, password);
+  final vek = await unwrap(container);
   late Uint8List plaintext;
   try {
     plaintext = await crypto.aes256gcmDecrypt(
@@ -362,6 +388,8 @@ Future<UnlockedVault> mergeVaults(
     b.payload,
     a.container.unlockSlots,
     b.container.unlockSlots,
+    generationA: a.container.generation,
+    generationB: b.container.generation,
   );
   merged.payload.metadata.updatedAt = ts;
   final parentGen = a.container.generation > b.container.generation
@@ -555,6 +583,25 @@ Future<VaultContainer> _reseal(
     previousGenerationHash: previous.previousGenerationHash,
     slots: previous.unlockSlots,
     iv: base64urlToBytes(previous.crypto.iv, 12),
+  );
+}
+
+/// Replace the slot set and commit a new generation (same VEK and payload).
+Future<UnlockedVault> commitUnlockSlots(
+  UnlockedVault unlocked,
+  CkvfCrypto crypto,
+  List<UnlockSlot> slots,
+) async {
+  final ids = <String>{};
+  for (final s in slots) {
+    if (!ids.add(s.slotId)) fail('ERR_SLOT_ID', 'duplicate slot_id');
+  }
+  if (slots.isEmpty) fail('ERR_SLOT_ID', 'cannot remove last slot');
+  final container = await _commitEnvelopeChange(crypto, unlocked, slots);
+  return UnlockedVault(
+    container: container,
+    payload: unlocked.payload,
+    vek: unlocked.vek,
   );
 }
 

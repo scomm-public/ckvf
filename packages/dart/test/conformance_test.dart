@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:ckvf/ckvf.dart' hide fail;
 import 'package:test/test.dart';
@@ -78,6 +79,89 @@ void main() {
             fail('wanted $wanted got ${e.code}');
           }
         }
+      }
+    });
+  }
+
+  final pepperDir = Directory('${vectors.path}/pepper-oprf');
+  if (pepperDir.existsSync()) pepperVectors(pepperDir);
+}
+
+class TranscriptPepper implements PepperOprf {
+  TranscriptPepper(this.poprf, this.poprfCase, {required this.strict});
+
+  final Map<String, dynamic> poprf;
+  final Map<String, dynamic> poprfCase;
+  final bool strict;
+
+  @override
+  Future<Uint8List> finalize({
+    required String vaultId,
+    required String slotId,
+    required String kid,
+    required Uint8List publicKey,
+    required Uint8List secret,
+  }) async {
+    final key = poprf['key'] as Map<String, dynamic>;
+    expect(vaultId, poprf['vault_id']);
+    expect(kid, key['kid']);
+    expect(bytesToBase64url(publicKey), key['public_key']);
+    if (strict) {
+      expect(slotId, poprfCase['slot_id']);
+      expect(utf8.decode(secret), poprfCase['secret']);
+    }
+    return base64urlToBytes(poprfCase['rwd'] as String, 64);
+  }
+}
+
+void pepperVectors(Directory dir) {
+  final poprf = jsonDecode(File('${dir.path}/poprf.json').readAsStringSync())
+      as Map<String, dynamic>;
+  final cases = {
+    for (final c in (poprf['cases'] as List).cast<Map<String, dynamic>>())
+      c['id'] as String: c,
+  };
+  final manifest = jsonDecode(
+    File('${dir.path}/manifest.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
+
+  for (final v in (manifest['vectors'] as List).cast<Map<String, dynamic>>()) {
+    final id = v['id'] as String;
+    test('pepper-oprf vector $id', () async {
+      final fixture = jsonDecode(
+        File('${dir.path}/vectors/$id.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final expectPass = v['expect'] == 'pass';
+      final crypto = DartCkvfCrypto();
+      Future<UnlockedVault> open() {
+        if (fixture['device_kek'] != null) {
+          return openVaultWithDeviceKek(
+            fixture['container']!,
+            slotId: fixture['slot_id'] as String,
+            kek: base64urlToBytes(fixture['device_kek'] as String, 32),
+            crypto: crypto,
+          );
+        }
+        final c = cases[fixture['poprf_case']]!;
+        return openVaultWithPepper(
+          fixture['container']!,
+          secret: fixture['secret'] as String,
+          pepper: TranscriptPepper(poprf, c, strict: expectPass),
+          crypto: crypto,
+          slotId: fixture['slot_id'] as String,
+        );
+      }
+
+      if (expectPass) {
+        final opened = await open();
+        expect(opened.container.vaultId, poprf['vault_id']);
+      } else {
+        await expectLater(
+          open(),
+          throwsA(
+            isA<CkvfException>().having((e) => e.code, 'code', v['error']),
+          ),
+        );
       }
     });
   }

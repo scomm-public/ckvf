@@ -1,0 +1,70 @@
+{
+  "id": "recovery-code-oprf-unlock",
+  "expect": "pass",
+  "error": null,
+  "container": {
+    "ciphertext": "g7g2qRde01dNtIcMd8Gc38C4qUdVKGeYOFZcsIHzl42bhX3ukI5LEO2uJOv3OC8yPvaaGdhqLlELqMP6krc-A76gJFOCvYFnujgGbneCfD3s1Qmr0sXTZi0t5gGaD5s7PRdOX9nboeDjK5suh7gleEDTUWXIN1Tm2DsvEqqYhMamDcr2ZtLWonsbbdPi1sx2ULZ1bwlL1Tn3_f72EqX7JDq-9m088afNg4fqBWq03MvZ8rOWZ81SK2AtknFCyic8unzaqW01lGp8myUcNwWZuv0gbM5XqKmPecDCXioS3E5lKWK9QkjMi1mxf_R-Tph0Z2Gd01fXZZFd-cHB6BqERE_YM7XEP4EyUz7umdaAZ2JjGHNY_OyPSQ1cx6l8gFmcs34uv_27Vqfv6Ufk_f1Dm2LwehIENW1ysvDIaPCYaY4kyEzHIahb5AA7DlM6KVaXKoaM3vrNDE1bN9oBMOb3vbixN3ToRlLe7jiIPz_-5nj5ZNGcoWGoA3mDlqgV1_5NpdFwsMoHVKFX9k-TjS_P8j3-hQY66-BtiBEAojtMpn8je-vOZtRDyLXx1qXfiQC3DGtbWeRjIJ5VY81no6STkFE4gqayWwUkUVIwcOZrOE3U2SXLfgPOoPAgQcss3rIp-QohfYjfArjcJnyIKux4LCxfsEAIbAEmBcbPmN82ryx919wjoNTXZNlQNC323BbLSTibySngITMqnOZrILSbaD1BfJHP0crErrIvyw",
+    "critical_extensions": [],
+    "crypto": {
+      "aead": "A256GCM",
+      "iv": "y0AyIX_xY98ogtkp"
+    },
+    "extensions": [],
+    "format": "CKVF",
+    "generation": 2,
+    "generation_hash": "90llfDJq-TWSETPTLoyAqJPjXxbqjvKPmA5R1lNlyKc",
+    "previous_generation_hash": "eADKWa3ODDk7XRFTeHK3Dmc-8R_jWj8i0nb3s9qVVEc",
+    "tag": "MfsoYPPPVCEVV0RqtGOZGA",
+    "unlock_slots": [
+      {
+        "created_at": "2026-09-27T00:00:00Z",
+        "kdf": {
+          "alg": "Argon2id",
+          "key_length": 32,
+          "m": 16384,
+          "p": 1,
+          "salt": "vNNttqBvu_bVo9XJG11RbA",
+          "t": 2
+        },
+        "method": "password-argon2id",
+        "slot_id": "RtGhyTGEL79t8qnO4aQcxQ",
+        "wrap": {
+          "alg": "A256GCM",
+          "ciphertext": "QneWiAKRH5h1MhYynXZNRPjZaoXBpJySZO5KnWaL8cw",
+          "iv": "VYA5vFjZS9fCM_ix",
+          "tag": "gPE9E3Niy5wjqF5SL1Kb7Q"
+        }
+      },
+      {
+        "created_at": "2026-09-27T00:00:00Z",
+        "kdf": {
+          "alg": "Argon2id",
+          "key_length": 32,
+          "m": 65536,
+          "p": 1,
+          "salt": "khV4c9tOh0491NfsQCeS6A",
+          "t": 3
+        },
+        "method": "recovery-code-oprf-argon2id",
+        "oprf": {
+          "kid": "vector-pepper-1",
+          "mode": "poprf",
+          "public_key": "sOxFk51b9JKBctYPVygHsZdBAjgJWg7ExloXtt0qvEg",
+          "suite": "ristretto255-SHA512"
+        },
+        "slot_id": "sLGys7S1tre4ubq7vL2-vw",
+        "wrap": {
+          "alg": "A256GCM",
+          "ciphertext": "dCr-7i4uBlV3OtUIoAmeY_jqNgwfh0FuaRKLs4z49CI",
+          "iv": "AKB47vZxOQCE_Dzs",
+          "tag": "HBlWrs4qVk1E0oNFTrxnog"
+        }
+      }
+    ],
+    "vault_id": "AQIDBAUGBwgJCgsMDQ4PEA",
+    "version": "1.0"
+  },
+  "slot_id": "sLGys7S1tre4ubq7vL2-vw",
+  "secret": "abcde-fghij klmno-pqrst-uvwxy-z",
+  "poprf_case": "recovery-code-oprf-unlock"
+}
