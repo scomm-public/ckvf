@@ -141,4 +141,25 @@ void main() {
     await Ckvf.validate(merged.vault.container);
     await reopen(merged.vault);
   });
+
+  test('rechain restarts a local chain at generation 1', () async {
+    var v = await addTestOpenPgpKey(await deviceVault(), crypto);
+    v = await addTestPkcs8Key(v, crypto);
+    final genesis = await rechain(v, crypto,
+        generation: 1, previousGenerationHash: null);
+    expect(genesis.container.generation, 1);
+    expect(genesis.container.previousGenerationHash, isNull);
+    expect(genesis.container.crypto.iv, isNot(v.container.crypto.iv));
+    expect((await reopen(genesis)).payload.keys, hasLength(2));
+    expect(
+      () => rechain(v, crypto, generation: 2, previousGenerationHash: null),
+      throwsA(isA<CkvfException>()),
+    );
+  });
+
+  test('slot changes never reuse the payload IV', () async {
+    final v = await deviceVault();
+    final next = await addUnlockSlot(v, crypto, 'correct horse');
+    expect(next.container.crypto.iv, isNot(v.container.crypto.iv));
+  });
 }

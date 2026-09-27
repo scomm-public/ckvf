@@ -454,7 +454,6 @@ async function commitEnvelopeChange(
     generation: unlocked.container.generation + 1,
     previous_generation_hash: unlocked.container.generation_hash,
     slots,
-    iv: base64urlToBytes(unlocked.container.crypto.iv, 12),
   });
 }
 

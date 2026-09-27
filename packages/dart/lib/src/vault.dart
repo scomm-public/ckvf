@@ -861,8 +861,31 @@ Future<VaultContainer> _commitEnvelopeChange(
     generation: unlocked.container.generation + 1,
     previousGenerationHash: unlocked.container.generationHash,
     slots: slots,
-    iv: base64urlToBytes(unlocked.container.crypto.iv, 12),
   );
+}
+
+/// Reseals the same payload, VEK, and slots as [generation] chained to
+/// [previousGenerationHash] (null only for generation 1). Used to restart a
+/// local chain on a host that has not stored it.
+Future<UnlockedVault> rechain(
+  UnlockedVault unlocked,
+  CkvfCrypto crypto, {
+  required int generation,
+  required String? previousGenerationHash,
+}) async {
+  if (generation < 1 || (generation == 1) != (previousGenerationHash == null)) {
+    fail('ERR_FORMAT', 'generation chain');
+  }
+  final container = await _sealPayload(
+    crypto,
+    unlocked.payload,
+    unlocked.vek,
+    vaultId: unlocked.container.vaultId,
+    generation: generation,
+    previousGenerationHash: previousGenerationHash,
+    slots: unlocked.container.unlockSlots,
+  );
+  return UnlockedVault(container: container, payload: unlocked.payload, vek: unlocked.vek);
 }
 
 Future<UnlockSlot> _wrapPasswordSlot(
