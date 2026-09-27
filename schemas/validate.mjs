@@ -61,6 +61,17 @@ const passwordSlot = {
   },
 };
 
+const oprfSlot = {
+  ...passwordSlot,
+  method: "password-oprf-argon2id",
+  oprf: {
+    suite: "ristretto255-SHA512",
+    mode: "poprf",
+    kid: "pw-2026-09",
+    public_key: B64_32,
+  },
+};
+
 const fixtures = [
   {
     schema: "extension.schema.json",
@@ -237,6 +248,42 @@ const extraCases = [
       kdf: passwordSlot.kdf,
       wrap: passwordSlot.wrap,
     },
+    ok: false,
+  },
+  {
+    name: "password-oprf slot accepted",
+    schema: "unlock-slot.schema.json",
+    instance: oprfSlot,
+    ok: true,
+  },
+  {
+    name: "recovery-code-oprf slot accepted",
+    schema: "unlock-slot.schema.json",
+    instance: { ...oprfSlot, method: "recovery-code-oprf-argon2id" },
+    ok: true,
+  },
+  {
+    name: "oprf slot requires oprf object",
+    schema: "unlock-slot.schema.json",
+    instance: { ...passwordSlot, method: "password-oprf-argon2id" },
+    ok: false,
+  },
+  {
+    name: "oprf slot rejects m below 65536",
+    schema: "unlock-slot.schema.json",
+    instance: { ...oprfSlot, kdf: { ...oprfSlot.kdf, m: 32768 } },
+    ok: false,
+  },
+  {
+    name: "oprf slot rejects t below 3",
+    schema: "unlock-slot.schema.json",
+    instance: { ...oprfSlot, kdf: { ...oprfSlot.kdf, t: 2 } },
+    ok: false,
+  },
+  {
+    name: "password-argon2id rejects oprf object",
+    schema: "unlock-slot.schema.json",
+    instance: { ...passwordSlot, oprf: oprfSlot.oprf },
     ok: false,
   },
   {

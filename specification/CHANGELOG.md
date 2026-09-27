@@ -6,7 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Added
+
+- Unlock methods `password-oprf-argon2id` and `recovery-code-oprf-argon2id` ([profiles/pepper-oprf.md](profiles/pepper-oprf.md)). A POPRF evaluation by the vault host is mixed into Argon2id, so a stolen container or host database cannot be attacked offline.
+- Extension `std:signing-key-retention`: delete a signing private key when it is retired; keep decryption keys.
+- Vault host: `POST /v1/vault/open` and `POST /v1/vault/{vault_id}/msk` with grant and MSK proof rules, `POST /v1/pw-oprf/evaluate`, read authorization, a devices and pairing addendum, and `scomm_vault_client` as the reference client.
+- Email OTP: rationale for the hosted profile's 64-bit (11-character Base62) codes.
+
 ### Changed
+
+- The vault grant text adds `iss`, `aud`, `kid`, `amr`, and `idp`, matching the Discovery Protocol.
+- `vault_id` on the vault host is 16 random bytes in base64url, as in the container.
 
 - A mail signing key is a private key. It stays on the device or inside the encrypted vault. The public directory does not store or return it. Signature checks use the verification public key, fetched by key id.
 

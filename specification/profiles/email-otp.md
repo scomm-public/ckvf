@@ -64,6 +64,28 @@ Implementations MAY implement binding by hashing that tuple (UTF-8 JCS of a JSON
 - The OTP MUST be single-use: successful consumption sets `consumed` and MUST prevent reuse (`ERR_REPLAY` / `ERR_OWNERSHIP`).
 - The OTP MUST NOT be the MSK seed, VEK, or password.
 
+### 5.1 SComm hosted profile: 64-bit codes
+
+The SComm.AI directory sends a 64-bit CSPRNG value encoded as 11 Base62
+characters (`0-9A-Za-z`, no separators). That is below the 128-bit
+recommendation above and above the 20-bit floor. The shorter code exists so
+people can read and type it from a mail message. It is acceptable because
+online guessing is the only attack, and it is bounded:
+
+- a code expires after 10 minutes and allows at most 5 verify attempts, with
+  the counter updated atomically;
+- issuance is rate-limited per mailbox and per client address;
+- the code is stored only as a salted hash and spent atomically on success;
+- the resulting grant is bound to the MSK fingerprint (§4), so a code
+  observed for one operation cannot arm a different key.
+
+With 5 attempts per code, a guess succeeds with probability about 5 / 2^64
+per issued code. A deployment that relaxes any of these bounds MUST return
+to 128-bit opaque tokens.
+
+Mailbox OTP is not an authenticator TOTP. Applications MUST NOT ask for a
+6-digit code for this profile.
+
 ## 6. Delivery
 
 How the OTP reaches the mailbox (SMTP, a mail API, a local MUA displaying a locally generated code) is **out of scope**. This profile MUST NOT be implemented as “call vendor X’s OTP API”.

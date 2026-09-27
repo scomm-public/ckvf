@@ -15,20 +15,50 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^[a-z0-9][a-z0-9._-]*$",
-      "description": "Community-registry unlock method. v1.0: password-argon2id, device-wrap-a256gcm."
+      "description": "Community-registry unlock method. v1.0: password-argon2id, device-wrap-a256gcm, password-oprf-argon2id, recovery-code-oprf-argon2id."
     },
     "created_at": {
       "$ref": "#/$defs/rfc3339Z"
     },
     "kdf": {
       "$ref": "#/$defs/kdf",
-      "description": "REQUIRED for password-argon2id. MUST be omitted for methods that do not use a KDF (including device-wrap-a256gcm)."
+      "description": "REQUIRED for password-argon2id and the OPRF methods. MUST be omitted for methods that do not use a KDF (including device-wrap-a256gcm)."
+    },
+    "oprf": {
+      "$ref": "#/$defs/oprf",
+      "description": "REQUIRED for the OPRF methods. MUST be omitted otherwise."
     },
     "wrap": {
       "$ref": "#/$defs/wrap"
     }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": {
+          "method": {
+            "enum": ["password-oprf-argon2id", "recovery-code-oprf-argon2id"]
+          }
+        },
+        "required": ["method"]
+      },
+      "then": {
+        "required": ["kdf", "oprf"],
+        "properties": {
+          "kdf": {
+            "type": "object",
+            "properties": {
+              "m": { "type": "integer", "minimum": 65536 },
+              "t": { "type": "integer", "minimum": 3 }
+            }
+          },
+          "oprf": { "$ref": "#/$defs/oprf" }
+        }
+      },
+      "else": {
+        "properties": { "oprf": false }
+      }
+    },
     {
       "if": {
         "properties": { "method": { "const": "password-argon2id" } },
@@ -116,6 +146,29 @@
         },
         "key_length": {
           "const": 32
+        }
+      }
+    },
+    "oprf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suite", "mode", "kid", "public_key"],
+      "properties": {
+        "suite": {
+          "const": "ristretto255-SHA512"
+        },
+        "mode": {
+          "const": "poprf",
+          "description": "RFC 9497 mode 0x02. The info string binds vault_id and slot_id."
+        },
+        "kid": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,64}$",
+          "description": "Vault host pepper key id used when this slot was wrapped."
+        },
+        "public_key": {
+          "$ref": "#/$defs/base64url32",
+          "description": "Pinned POPRF public key for kid. Clients verify the evaluation proof against it."
         }
       }
     },
