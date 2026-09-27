@@ -323,6 +323,26 @@ Future<UnlockedVault> rewrapPepperSlot(
   );
 }
 
+/// Builds a `device-wrap-a256gcm` slot wrapping [vek] under [kek] (32 bytes
+/// from platform secure storage).
+Future<UnlockSlot> wrapDeviceSlot(
+  CkvfCrypto crypto, {
+  required String vaultId,
+  required List<int> vek,
+  required List<int> kek,
+  String? slotId,
+  String? now,
+}) async {
+  if (kek.length != 32) fail('ERR_UNLOCK', 'device KEK must be 32 bytes');
+  final id = slotId ?? bytesToBase64url(crypto.randomBytes(16));
+  return UnlockSlot(
+    slotId: id,
+    method: deviceWrapMethod,
+    createdAt: rfc3339(now),
+    wrap: await _wrap(crypto, kek, vek, deviceWrapMethod, id, vaultId),
+  );
+}
+
 /// Adds a `device-wrap-a256gcm` slot wrapping the VEK under [kek] (32 bytes
 /// from platform secure storage) and commits a generation.
 Future<UnlockedVault> addDeviceSlot(
@@ -332,20 +352,13 @@ Future<UnlockedVault> addDeviceSlot(
   String? slotId,
   String? now,
 }) async {
-  if (kek.length != 32) fail('ERR_UNLOCK', 'device KEK must be 32 bytes');
-  final id = slotId ?? bytesToBase64url(crypto.randomBytes(16));
-  final slot = UnlockSlot(
-    slotId: id,
-    method: deviceWrapMethod,
-    createdAt: rfc3339(now),
-    wrap: await _wrap(
-      crypto,
-      kek,
-      unlocked.vek,
-      deviceWrapMethod,
-      id,
-      unlocked.container.vaultId,
-    ),
+  final slot = await wrapDeviceSlot(
+    crypto,
+    vaultId: unlocked.container.vaultId,
+    vek: unlocked.vek,
+    kek: kek,
+    slotId: slotId,
+    now: now,
   );
   return commitUnlockSlots(
     unlocked,

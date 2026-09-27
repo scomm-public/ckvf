@@ -17,21 +17,32 @@ import 'types.dart';
 import 'validate.dart';
 import 'version.dart';
 
+/// Builds the first generation's unlock slots for a fresh [vaultId] and VEK.
+typedef SlotBuilder = Future<List<UnlockSlot>> Function(
+  String vaultId,
+  List<int> vek,
+);
+
 class CreateVaultOptions {
   CreateVaultOptions({
     required this.identityType,
     required this.identityValue,
-    required this.password,
+    this.password,
     required this.crypto,
     this.now,
     this.kdf,
     this.limits,
     this.vaultId,
+    this.mskSeed,
+    this.slots,
+    this.extensions = const [],
   });
 
   final IdentityType identityType;
   final String identityValue;
-  final String password;
+
+  /// Adds a `password-argon2id` slot. Required unless [slots] is set.
+  final String? password;
   final CkvfCrypto crypto;
   final String? now;
   final Argon2idParams? kdf;
@@ -39,13 +50,32 @@ class CreateVaultOptions {
 
   /// 16-byte base64url. Random when null; set only for vectors and tests.
   final String? vaultId;
+
+  /// Existing Ed25519 MSK seed (32 bytes) to establish. Random when null.
+  final List<int>? mskSeed;
+
+  /// Additional first-generation slots (device, pepper).
+  final SlotBuilder? slots;
+
+  /// Initial payload extensions.
+  final List<Extension> extensions;
 }
 
 Future<UnlockedVault> createVault(CreateVaultOptions opts) async {
   final crypto = opts.crypto;
   final now = rfc3339(opts.now);
+  if (opts.password == null && opts.slots == null) {
+    fail('ERR_SLOT_ID', 'a vault needs at least one unlock slot');
+  }
   final identity = await makeIdentity(opts.identityType, opts.identityValue, crypto);
-  final msk = await crypto.ed25519Generate();
+  final seed = opts.mskSeed;
+  if (seed != null && seed.length != 32) fail('ERR_FORMAT', 'msk seed');
+  final msk = seed == null
+      ? await crypto.ed25519Generate()
+      : (
+          publicKey: await crypto.ed25519PublicFromSeed(seed),
+          privateKey: Uint8List.fromList(seed),
+        );
   final mskId = bytesToBase64url(await crypto.sha256(msk.publicKey));
   final payload = VaultPayload(
     identity: identity,
@@ -63,20 +93,24 @@ Future<UnlockedVault> createVault(CreateVaultOptions opts) async {
     preferredKeys: {},
     metadata: VaultMetadata(createdAt: now, updatedAt: now),
     tombstones: [],
-    extensions: [],
+    extensions: List<Extension>.from(opts.extensions),
     criticalExtensions: [],
   );
   final vek = crypto.randomBytes(32);
+  final vaultId = opts.vaultId != null
+      ? bytesToBase64url(base64urlToBytes(opts.vaultId!, 16))
+      : bytesToBase64url(crypto.randomBytes(16));
+  final extra = opts.slots == null
+      ? const <UnlockSlot>[]
+      : await opts.slots!(vaultId, vek);
   final container = await _sealPayload(
     crypto,
     payload,
     vek,
-    vaultId: opts.vaultId != null
-        ? bytesToBase64url(base64urlToBytes(opts.vaultId!, 16))
-        : bytesToBase64url(crypto.randomBytes(16)),
+    vaultId: vaultId,
     generation: 1,
     previousGenerationHash: null,
-    slots: const [],
+    slots: extra,
     password: opts.password,
     kdf: opts.kdf ?? testArgon2id,
     now: now,
@@ -295,6 +329,151 @@ Future<UnlockedVault> retireKey(
   return UnlockedVault(container: container, payload: payload, vek: unlocked.vek);
 }
 
+VaultPayload _copyPayload(
+  VaultPayload p, {
+  List<KeyRecord>? keys,
+  Map<String, Map<String, String>>? preferredKeys,
+  List<Tombstone>? tombstones,
+  List<Extension>? extensions,
+  required String updatedAt,
+}) {
+  return VaultPayload(
+    identity: p.identity,
+    msk: p.msk,
+    keys: keys ?? p.keys,
+    preferredKeys: preferredKeys ?? p.preferredKeys,
+    metadata: VaultMetadata(createdAt: p.metadata.createdAt, updatedAt: updatedAt),
+    tombstones: tombstones ?? p.tombstones,
+    extensions: extensions ?? p.extensions,
+    criticalExtensions: p.criticalExtensions,
+  );
+}
+
+Future<UnlockedVault> _commitPayload(
+  UnlockedVault unlocked,
+  CkvfCrypto crypto,
+  VaultPayload payload,
+) async {
+  final container =
+      await _incrementAndSeal(crypto, payload, unlocked.vek, unlocked.container);
+  return UnlockedVault(container: container, payload: payload, vek: unlocked.vek);
+}
+
+/// `REVOKE_KEY`: keeps `private_key` (SPEC §9.6).
+Future<UnlockedVault> revokeKey(
+  UnlockedVault unlocked,
+  CkvfCrypto crypto,
+  String absoluteKeyId, [
+  String? now,
+]) {
+  if (getKey(unlocked, absoluteKeyId) == null) fail('ERR_KEY_ID');
+  final ts = rfc3339(now);
+  return _commitPayload(
+    unlocked,
+    crypto,
+    _copyPayload(
+      unlocked.payload,
+      keys: unlocked.payload.keys
+          .map((k) => k.absoluteKeyId == absoluteKeyId ? k.copyWith(status: 'revoked') : k)
+          .toList(),
+      updatedAt: ts,
+    ),
+  );
+}
+
+/// `DELETE_PRIVATE_KEY` (SPEC §4.5): clears `private_key`, keeps the record,
+/// appends a tombstone. [reason] is `user-requested`, `compromised-purge`,
+/// or `policy`. A deleted key is at least `retired`.
+Future<UnlockedVault> deletePrivateKey(
+  UnlockedVault unlocked,
+  CkvfCrypto crypto,
+  String absoluteKeyId, {
+  String reason = 'policy',
+  String? now,
+}) {
+  if (!const ['user-requested', 'compromised-purge', 'policy'].contains(reason)) {
+    fail('ERR_FORMAT', 'tombstone reason');
+  }
+  if (getKey(unlocked, absoluteKeyId) == null) fail('ERR_KEY_ID');
+  final ts = rfc3339(now);
+  return _commitPayload(
+    unlocked,
+    crypto,
+    _copyPayload(
+      unlocked.payload,
+      keys: unlocked.payload.keys.map((k) {
+        if (k.absoluteKeyId != absoluteKeyId) return k;
+        return k.copyWith(
+          status: k.status == 'active' ? 'retired' : k.status,
+          clearPrivateKey: true,
+        );
+      }).toList(),
+      tombstones: [
+        ...unlocked.payload.tombstones,
+        Tombstone(
+          absoluteKeyId: absoluteKeyId,
+          deletedAt: ts,
+          nonce: bytesToBase64url(crypto.randomBytes(16)),
+          reason: reason,
+        ),
+      ],
+      updatedAt: ts,
+    ),
+  );
+}
+
+/// `SET_PREFERRED_KEY`. A null [absoluteKeyId] clears the preference.
+Future<UnlockedVault> setPreferredKey(
+  UnlockedVault unlocked,
+  CkvfCrypto crypto, {
+  required KeyFamily family,
+  required KeyPurpose purpose,
+  String? absoluteKeyId,
+  String? now,
+}) {
+  if (absoluteKeyId != null) {
+    final key = getKey(unlocked, absoluteKeyId);
+    if (key == null) fail('ERR_KEY_ID');
+    if (key.family != family || !key.purpose.contains(purpose)) {
+      fail('ERR_KEY_ID', 'preferred key family/purpose');
+    }
+    if (key.status != 'active') fail('ERR_STATUS', 'preferred key must be active');
+  }
+  final preferred = {
+    for (final e in unlocked.payload.preferredKeys.entries)
+      e.key: Map<String, String>.from(e.value),
+  };
+  final byPurpose = preferred.putIfAbsent(family, () => <String, String>{});
+  if (absoluteKeyId == null) {
+    byPurpose.remove(purpose);
+    if (byPurpose.isEmpty) preferred.remove(family);
+  } else {
+    byPurpose[purpose] = absoluteKeyId;
+  }
+  return _commitPayload(
+    unlocked,
+    crypto,
+    _copyPayload(unlocked.payload, preferredKeys: preferred, updatedAt: rfc3339(now)),
+  );
+}
+
+/// `UPDATE_METADATA`: replaces the payload's non-critical extensions.
+Future<UnlockedVault> updateExtensions(
+  UnlockedVault unlocked,
+  CkvfCrypto crypto,
+  List<Extension> extensions, [
+  String? now,
+]) {
+  if (extensions.any((e) => e.critical)) {
+    fail('ERR_CRITICAL_EXTENSION', 'use critical_extensions');
+  }
+  return _commitPayload(
+    unlocked,
+    crypto,
+    _copyPayload(unlocked.payload, extensions: extensions, updatedAt: rfc3339(now)),
+  );
+}
+
 Future<UnlockedVault> changePassword(
   UnlockedVault unlocked,
   CkvfCrypto crypto,
@@ -405,6 +584,70 @@ Future<UnlockedVault> mergeVaults(
     slots: merged.slots,
   );
   return UnlockedVault(container: container, payload: merged.payload, vek: a.vek);
+}
+
+/// Merges [local] into the stored [head] and seals generation `head + 1`
+/// chained to `head.generation_hash`, however many generations [local]
+/// advanced offline. When the VEKs differ, [local] rotated after it last saw
+/// [head]: its slots and VEK win. Conflicts from SPEC §12 are returned.
+Future<({UnlockedVault vault, List<MergeConflict> conflicts})> mergeOnto(
+  UnlockedVault head,
+  UnlockedVault local,
+  CkvfCrypto crypto, [
+  String? now,
+]) async {
+  if (head.container.vaultId != local.container.vaultId) {
+    fail('ERR_FORMAT', 'vault_id');
+  }
+  final rotated = !constantTimeEqual(head.vek, local.vek);
+  final merged = mergePayloads(
+    head.payload,
+    local.payload,
+    rotated ? local.container.unlockSlots : head.container.unlockSlots,
+    local.container.unlockSlots,
+    generationA: head.container.generation,
+    generationB: local.container.generation,
+  );
+  merged.payload.metadata.updatedAt = rfc3339(now);
+  final vek = rotated ? local.vek : head.vek;
+  final container = await _sealPayload(
+    crypto,
+    merged.payload,
+    vek,
+    vaultId: head.container.vaultId,
+    generation: head.container.generation + 1,
+    previousGenerationHash: head.container.generationHash,
+    slots: merged.slots,
+  );
+  return (
+    vault: UnlockedVault(container: container, payload: merged.payload, vek: vek),
+    conflicts: merged.conflicts,
+  );
+}
+
+/// Rotates the VEK and commits a generation whose slots come from [slots]
+/// (the old VEK cannot open it). Slots that need a secret this caller does
+/// not hold must be rebuilt by [slots] or dropped.
+Future<UnlockedVault> rotateVek(
+  UnlockedVault unlocked,
+  CkvfCrypto crypto,
+  SlotBuilder slots, [
+  String? now,
+]) async {
+  final vek = crypto.randomBytes(32);
+  final next = await slots(unlocked.container.vaultId, vek);
+  if (next.isEmpty) fail('ERR_SLOT_ID', 'cannot remove last slot');
+  final payload = _copyPayload(unlocked.payload, updatedAt: rfc3339(now));
+  final container = await _sealPayload(
+    crypto,
+    payload,
+    vek,
+    vaultId: unlocked.container.vaultId,
+    generation: unlocked.container.generation + 1,
+    previousGenerationHash: unlocked.container.generationHash,
+    slots: next,
+  );
+  return UnlockedVault(container: container, payload: payload, vek: vek);
 }
 
 Future<UnlockedVault> replaceMsk(
