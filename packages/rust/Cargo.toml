@@ -11,7 +11,21 @@ name = "scomm_vault"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
+aes-gcm = "0.10"
+argon2 = "0.5"
+base64 = "0.22"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+getrandom = "0.2"
+hkdf = "0.12"
+rand = "0.8"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
+subtle = "2"
+thiserror = "1"
+unicode-normalization = "0.1"
+zeroize = { version = "1", features = ["derive"] }
 wasm-bindgen = { version = "0.2", optional = true }
 
 [features]

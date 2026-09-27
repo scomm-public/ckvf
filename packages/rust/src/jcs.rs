@@ -11,7 +11,17 @@ pub struct JcsError(pub String);
 
 pub fn canonicalize_json(input: &str) -> Result<String, JcsError> {
     let value: Value = serde_json::from_str(input).map_err(|e| JcsError(e.to_string()))?;
-    serialize(&value, 0)
+    canonicalize(&value)
+}
+
+/// Canonicalize an already-parsed JSON value (RFC 8785).
+pub fn canonicalize(value: &Value) -> Result<String, JcsError> {
+    serialize(value, 0)
+}
+
+/// UTF-8 bytes of the JCS form of `value`.
+pub fn canonicalize_bytes(value: &Value) -> Result<Vec<u8>, JcsError> {
+    Ok(canonicalize(value)?.into_bytes())
 }
 
 fn serialize(value: &Value, depth: usize) -> Result<String, JcsError> {
