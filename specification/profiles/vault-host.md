@@ -116,12 +116,84 @@ stay verifiable.
 
 ### 2.4 Records
 
-`POST /v1/vault/{vault_id}/records` stores one generation. The body is the
-CKVF outer container JSON plus an MSK signature. The host checks `format`,
-`version`, `vault_id`, `generation`, `previous_generation_hash`, and
-`generation_hash` without decrypting (SPEC.md §11.2), and rejects a
-generation that does not extend its current head. It does not parse the
-encrypted payload.
+`POST /v1/vault/{vault_id}/records` stores one generation:
+
+```json
+{
+  "identity_id": "<64 hex>",
+  "container": { "format": "CKVF", "version": "1.0", "vault_id": "...", ... },
+  "msk_signature": { "algorithm": "ed25519", "value": "<base64url 64>" },
+  "license_device_id": "<optional; host licensing>"
+}
+```
+
+The signature is Ed25519 by the identity's armed MSK over this UTF-8 text,
+each line ending in LF:
+
+```text
+SComm/Pubkey/1/vault_records_put
+principal=<identity_id>
+vault_id=<vault_id>
+generation=<container.generation>
+generation_hash=<container.generation_hash>
+```
+
+The host checks, without decrypting (SPEC.md §11.2):
+
+1. `format` is `CKVF` and `version` is `1.0` (`400 unsupported_version`
+   otherwise);
+2. `container.vault_id` equals the path `vault_id`, which is bound to
+   `identity_id`; an unbound pair is `404 unknown_principal`;
+3. `generation` is a positive integer and `previous_generation_hash` is
+   `null` exactly when `generation` is `1`;
+4. `generation_hash` equals base64url(SHA-256(JCS(container without
+   `generation_hash`)));
+5. the signature verifies with the armed MSK (`401 invalid_signature`).
+
+Any other container error is `400 vault_corrupt`, and a container larger than
+the host limit is `413`. The host does not parse the encrypted payload.
+
+The generation MUST be exactly head + 1 with `previous_generation_hash` equal
+to the head's `generation_hash`. Resending the stored generation with the same
+hash returns `200` with `"duplicate": true`. Anything else is
+`409 generation_conflict`:
+
+```json
+{
+  "error": {
+    "code": "generation_conflict",
+    "message": "...",
+    "details": {
+      "generation": 2,
+      "stored_generation_hash": "<base64url, when that generation exists>",
+      "head_generation": 2,
+      "head_generation_hash": "<base64url>"
+    }
+  }
+}
+```
+
+On a conflict the client fetches the head, merges (SPEC.md §12), and uploads
+head + 1.
+
+`GET /v1/vault/{vault_id}/current` and `.../generation/{n}` return:
+
+```json
+{
+  "record": {
+    "container": { },
+    "generation": 3,
+    "generation_hash": "<base64url>",
+    "msk_signature": { "algorithm": "ed25519", "value": "<base64url>" },
+    "created_at": "<RFC 3339>"
+  },
+  "msk_public_key": "<base64url 32>",
+  "archived_msk_public_keys": ["<base64url 32>"]
+}
+```
+
+Clients verify `msk_signature` against `msk_public_key` or an archived key
+before trusting `container`.
 
 ### 2.5 Pepper OPRF
 
