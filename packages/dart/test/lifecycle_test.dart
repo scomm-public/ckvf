@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:ckvf/ckvf.dart';
 import 'package:test/test.dart';
 
+import 'dart_crypto.dart';
+
 void main() {
   final crypto = DartCkvfCrypto();
   final kek = Uint8List.fromList(List<int>.generate(32, (i) => i + 1));
@@ -138,7 +140,7 @@ void main() {
     );
     expect(merged.vault.payload.keys, hasLength(3));
     expect(merged.conflicts, isEmpty);
-    await Ckvf.validate(merged.vault.container);
+    await Ckvf.validate(merged.vault.container, crypto: crypto);
     await reopen(merged.vault);
   });
 

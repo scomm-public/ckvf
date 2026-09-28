@@ -1,11 +1,9 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:ckvf/ckvf.dart';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:cryptography/cryptography.dart';
-
-import 'crypto_provider.dart';
-import 'errors.dart';
 
 /// Software Dart provider (package:cryptography). Not hardware-backed.
 class DartCkvfCrypto implements CkvfCrypto {
@@ -126,5 +124,3 @@ class DartCkvfCrypto implements CkvfCrypto {
     );
   }
 }
-
-final defaultCkvfCrypto = DartCkvfCrypto();

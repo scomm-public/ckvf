@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:ckvf/ckvf.dart';
 import 'package:test/test.dart';
 
+import 'dart_crypto.dart';
+
 void main() {
   test('RFC 8785 JCS sorts keys', () {
     expect(jcs({'b': 1, 'a': 2}), '{"a":2,"b":1}');
@@ -40,8 +42,9 @@ void main() {
   });
 
   test('identity_id examples from SPEC', () async {
-    final emailId = await identityId('email', 'user@example.com', defaultCkvfCrypto);
-    final dnsId = await identityId('dns', 'example.com', defaultCkvfCrypto);
+    final crypto = DartCkvfCrypto();
+    final emailId = await identityId('email', 'user@example.com', crypto);
+    final dnsId = await identityId('dns', 'example.com', crypto);
     expect(emailId, 'tmwIJmeStJDSo9giG47rc8MKlVNxXPBKhG1GIcReptA');
     expect(dnsId, 'LpMoG_ozO2qxNonqsDwgJUBJEvma97aY8Z9q1njrZ-M');
   });
@@ -117,7 +120,7 @@ void main() {
   });
 
   test('MSK stays Ed25519; pq family remains forbidden', () {
-    expect(mskAlgorithms, ['Ed25519']);
+    expect(mskAlgorithms, ['Ed25519', 'mldsa65-ed25519']);
     expect(isForbiddenFamily('pq'), isTrue);
     expect(isForbiddenFamily('pqc'), isTrue);
     expect(keyFamilies, containsAll(['openpgp', 'smime']));

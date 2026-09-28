@@ -8,7 +8,6 @@ library;
 
 import 'src/base64url.dart';
 import 'src/crypto_provider.dart';
-import 'src/dart_crypto.dart';
 import 'src/errors.dart';
 import 'src/generation.dart';
 import 'src/identity.dart' as identity_api;
@@ -16,12 +15,13 @@ import 'src/keyid.dart' as keyid_api;
 import 'src/types.dart';
 import 'src/validate.dart';
 import 'src/vault.dart' as vault_api;
+
+export 'src/vault.dart' show replaceMskHybrid;
 import 'src/version.dart' as version_api;
 
 export 'src/aad.dart';
 export 'src/base64url.dart';
 export 'src/crypto_provider.dart';
-export 'src/dart_crypto.dart';
 export 'src/errors.dart';
 export 'src/generation.dart';
 export 'src/identity.dart';
@@ -41,8 +41,6 @@ export 'src/version.dart';
 
 /// Capability and codec surface for CKVF container `"1.0"` (Community Draft 0.1).
 abstract final class Ckvf {
-  static CkvfCrypto get crypto => defaultCkvfCrypto;
-
   static bool canReadVersion(String v) => version_api.canReadVersion(v);
 
   static bool canWriteVersion(String v) => version_api.canWriteVersion(v);
@@ -63,22 +61,22 @@ abstract final class Ckvf {
   /// Validate container structure, encodings, and `generation_hash` (fail closed).
   static Future<void> validate(
     Object container, {
-    CkvfCrypto? crypto,
+    required CkvfCrypto crypto,
   }) async {
     final shaped = container is VaultContainer
         ? validateContainerShape(container.toJson())
         : validateContainerShape(container);
-    await assertGenerationHash(shaped, crypto ?? defaultCkvfCrypto);
+    await assertGenerationHash(shaped, crypto);
   }
 
   /// Create a new vault bound to an Identity and wrap the VEK with [password].
   static Future<UnlockedVault> create({
     required Object identity,
     required String password,
-    CkvfCrypto? crypto,
+    required CkvfCrypto crypto,
     String? now,
   }) {
-    final resolved = crypto ?? defaultCkvfCrypto;
+    final resolved = crypto;
     late final String type;
     late final String value;
     if (identity is Identity) {
@@ -104,21 +102,21 @@ abstract final class Ckvf {
   /// Encrypt a payload under the VEK (AES-256-GCM). Passwords wrap the VEK only.
   static Future<VaultContainer> encrypt({
     required UnlockedVault unlocked,
-    CkvfCrypto? crypto,
+    required CkvfCrypto crypto,
   }) {
-    return vault_api.lockVault(unlocked, crypto ?? defaultCkvfCrypto);
+    return vault_api.lockVault(unlocked, crypto);
   }
 
   /// Decrypt a container (password). MUST NOT rewrite on open.
   static Future<UnlockedVault> decrypt({
     required Object container,
     required String password,
-    CkvfCrypto? crypto,
+    required CkvfCrypto crypto,
   }) {
     return vault_api.openVault(
       container,
       password: password,
-      crypto: crypto ?? defaultCkvfCrypto,
+      crypto: crypto,
     );
   }
 
@@ -126,35 +124,35 @@ abstract final class Ckvf {
   static Future<UnlockedVault> merge(
     UnlockedVault a,
     UnlockedVault b, {
-    CkvfCrypto? crypto,
+    required CkvfCrypto crypto,
     String? now,
   }) {
-    return vault_api.mergeVaults(a, b, crypto ?? defaultCkvfCrypto, now);
+    return vault_api.mergeVaults(a, b, crypto, now);
   }
 
   /// `identity_id` = unpadded base64url(SHA-256(UTF-8 `type:canonicalValue`)).
   static Future<String> identityId({
     required String type,
     required String value,
-    CkvfCrypto? crypto,
+    required CkvfCrypto crypto,
   }) {
-    return identity_api.identityId(type, value, crypto ?? defaultCkvfCrypto);
+    return identity_api.identityId(type, value, crypto);
   }
 
   /// `msk_id` from MSK public key bytes as specified.
-  static Future<String> mskId(List<int> publicKey, {CkvfCrypto? crypto}) async {
-    final digest = await (crypto ?? defaultCkvfCrypto).sha256(publicKey);
+  static Future<String> mskId(List<int> publicKey, {required CkvfCrypto crypto}) async {
+    final digest = await crypto.sha256(publicKey);
     return bytesToBase64url(digest);
   }
 
   /// `absolute_key_id` = unpadded base64url(SHA-256(canonical public key bytes)).
   static Future<String> absoluteKeyId(
     List<int> canonicalPublicKeyBytes, {
-    CkvfCrypto? crypto,
+    required CkvfCrypto crypto,
   }) {
     return keyid_api.absoluteKeyId(
       canonicalPublicKeyBytes,
-      crypto ?? defaultCkvfCrypto,
+      crypto,
     );
   }
 

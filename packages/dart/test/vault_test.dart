@@ -1,6 +1,8 @@
 import 'package:ckvf/ckvf.dart';
 import 'package:test/test.dart';
 
+import 'dart_crypto.dart';
+
 const password = 'CKVF-TEST-PASSWORD';
 const now = '2026-08-17T00:00:00Z';
 
@@ -85,13 +87,19 @@ void main() {
   });
 
   test('Ckvf facade create/decrypt roundtrip', () async {
+    final crypto = DartCkvfCrypto();
     final unlocked = await Ckvf.create(
       identity: {'type': 'email', 'value': 'bob@example.com'},
       password: password,
+      crypto: crypto,
       now: now,
     );
-    final locked = await Ckvf.encrypt(unlocked: unlocked);
-    final opened = await Ckvf.decrypt(container: locked, password: password);
+    final locked = await Ckvf.encrypt(unlocked: unlocked, crypto: crypto);
+    final opened = await Ckvf.decrypt(
+      container: locked,
+      password: password,
+      crypto: crypto,
+    );
     expect(opened.payload.identity.value, 'bob@example.com');
   });
 }

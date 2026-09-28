@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:ckvf/ckvf.dart' hide fail;
 import 'package:test/test.dart';
 
+import 'dart_crypto.dart';
+
 Directory? findVectors() {
   final env = Platform.environment['CKVF_TEST_VECTORS'];
   if (env != null && env.isNotEmpty) {

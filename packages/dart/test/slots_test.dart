@@ -4,6 +4,8 @@ import 'package:ckvf/ckvf.dart';
 import 'package:crypto/crypto.dart' as hash;
 import 'package:test/test.dart';
 
+import 'dart_crypto.dart';
+
 const password = 'CKVF-TEST-PASSWORD';
 const now = '2026-09-27T00:00:00Z';
 
