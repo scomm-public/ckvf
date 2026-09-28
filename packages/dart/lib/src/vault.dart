@@ -694,6 +694,67 @@ Future<UnlockedVault> replaceMsk(
   return UnlockedVault(container: container, payload: payload, vek: unlocked.vek);
 }
 
+/// Arms `mldsa65-ed25519` and seals container `"1.1"`.
+///
+/// [publicKey] is the 1,984-byte concatenation. Seeds are 32 bytes each.
+/// The previous public key is kept in `msk.history`.
+Future<UnlockedVault> replaceMskHybrid(
+  UnlockedVault unlocked,
+  CkvfCrypto crypto, {
+  required List<int> publicKey,
+  required List<int> mldsaSeed,
+  required List<int> edSeed,
+  String? now,
+}) async {
+  if (publicKey.length != 1984 || mldsaSeed.length != 32 || edSeed.length != 32) {
+    fail('ERR_FORMAT', 'hybrid msk');
+  }
+  final ts = rfc3339(now);
+  final mskId = bytesToBase64url(await crypto.sha256(publicKey));
+  final old = unlocked.payload.msk.current;
+  final payload = VaultPayload(
+    identity: unlocked.payload.identity,
+    msk: MskState(
+      current: MskCurrent(
+        mskId: mskId,
+        algorithm: 'mldsa65-ed25519',
+        publicKey: bytesToBase64url(publicKey),
+        privateKey: {
+          'mldsa65_seed': bytesToBase64url(mldsaSeed),
+          'ed25519_seed': bytesToBase64url(edSeed),
+        },
+        activatedAt: ts,
+      ),
+      history: [
+        ...unlocked.payload.msk.history,
+        MskHistoryEntry(
+          mskId: old.mskId,
+          algorithm: old.algorithm,
+          publicKey: old.publicKey,
+          activatedAt: old.activatedAt,
+          retiredAt: ts,
+        ),
+      ],
+    ),
+    keys: unlocked.payload.keys,
+    preferredKeys: unlocked.payload.preferredKeys,
+    metadata: VaultMetadata(
+      createdAt: unlocked.payload.metadata.createdAt,
+      updatedAt: ts,
+    ),
+    tombstones: unlocked.payload.tombstones,
+    extensions: unlocked.payload.extensions,
+    criticalExtensions: unlocked.payload.criticalExtensions,
+  );
+  final container = await _incrementAndSeal(
+    crypto,
+    payload,
+    unlocked.vek,
+    unlocked.container,
+  );
+  return UnlockedVault(container: container, payload: payload, vek: unlocked.vek);
+}
+
 String serializeContainer(VaultContainer container) => jcs(container.toJson());
 
 Future<UnlockedVault> addTestOpenPgpKey(
@@ -770,7 +831,9 @@ Future<VaultContainer> _sealPayload(
   final nonce = iv ?? crypto.randomBytes(12);
   final draft = VaultContainer(
     format: ckvfFormat,
-    version: ckvfContainerVersion,
+    version: payload.msk.current.algorithm == 'mldsa65-ed25519'
+        ? ckvfContainerVersion11
+        : ckvfContainerVersion,
     vaultId: vaultId,
     generation: generation,
     previousGenerationHash: previousGenerationHash,

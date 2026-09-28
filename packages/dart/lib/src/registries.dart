@@ -19,9 +19,10 @@ const pepperUnlockMethods = [
 ];
 const aeadAlgorithms = ['A256GCM'];
 const kdfs = ['Argon2id'];
-const mskAlgorithms = ['Ed25519'];
+const mskAlgorithms = ['Ed25519', 'mldsa65-ed25519'];
 // Content keys may use RFC 9980 OpenPGP / CMS PQC algorithm *strings* on
-// family openpgp or smime. Identity MSK stays Ed25519; families pq/pqc stay forbidden.
+// family openpgp or smime. Container 1.0 MSKs stay Ed25519. Container 1.1
+// may arm mldsa65-ed25519. Families pq/pqc stay forbidden.
 
 const statusSeverity = <String, int>{
   'active': 0,

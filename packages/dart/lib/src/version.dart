@@ -1,8 +1,9 @@
 import 'registries.dart';
 import 'types.dart';
 
-const readVersions = [ckvfContainerVersion];
-const writeVersions = [ckvfContainerVersion];
+const ckvfContainerVersion11 = '1.1';
+const readVersions = [ckvfContainerVersion, ckvfContainerVersion11];
+const writeVersions = [ckvfContainerVersion, ckvfContainerVersion11];
 
 bool canReadVersion(String version) => readVersions.contains(version);
 

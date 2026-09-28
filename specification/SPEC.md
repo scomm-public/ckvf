@@ -714,7 +714,9 @@ Implementations MAY reject additional parameters they cannot allocate. They MUST
 
 ### 6.6. MSK signatures (Ed25519)
 
-`signature.algorithm` MUST be `"Ed25519"` in protocol version `"1.0"`.
+`signature.algorithm` MUST be `"Ed25519"` in container version `"1.0"`. Container
+version `"1.1"` also allows `"mldsa65-ed25519"` (Section 8.5). A `"1.0"`
+verifier MUST reject any other algorithm.
 
 ```
 signature.value = Ed25519Sign(MSK_private_seed, UTF-8 JCS(body))
@@ -847,6 +849,38 @@ Used to recover or rotate the MSK.
 - Historical MSK public keys MUST be retained as in [Section 8.2](#82-history).
 
 A merge in which `msk.current.msk_id` differs is a hard conflict ([Section 12.6](#126-msk)).
+
+### 8.5. Container version `"1.1"`
+
+`"1.1"` is `"1.0"` plus one MSK algorithm. AEAD, unlock slots, key families, and
+operations are unchanged. `"1.0"` files remain Ed25519-only. Writers MUST NOT
+rewrite a `"1.0"` vault to `"1.1"` on open. The upgrade is an explicit
+`REPLACE_MSK` that arms `mldsa65-ed25519`.
+
+`msk.current.algorithm` in `"1.1"` is `"Ed25519"` or `"mldsa65-ed25519"`.
+
+For `"mldsa65-ed25519"`:
+
+- `public_key` is base64url of the 1,952-byte ML-DSA-65 public key concatenated
+  with the 32-byte Ed25519 public key.
+- `private_key` is a JSON object, not a string:
+
+```json
+{
+  "mldsa65_seed": "<base64url 32>",
+  "ed25519_seed": "<base64url 32>"
+}
+```
+
+`mldsa65_seed` is the FIPS 204 `ξ` input to `ML-DSA.KeyGen_internal` for
+ML-DSA-65. `ed25519_seed` is the RFC 8032 32-byte seed. Implementations that
+share a vault MUST derive the same public key from those seeds.
+
+`msk_id` remains `base64url(SHA-256(public_key_bytes))`. History entries keep
+`algorithm` and `public_key` and MUST NOT contain `private_key`. A `"1.1"`
+signature value is the 3,309-byte ML-DSA-65 signature concatenated with the
+64-byte Ed25519 signature, both over the same message. Either failure rejects
+the signature.
 
 ---
 
@@ -1155,7 +1189,7 @@ Implementations MUST expose (or equivalently document) two capabilities:
 - `canReadVersion(version) -> bool`
 - `canWriteVersion(version) -> bool`
 
-An implementation MUST NOT silently rewrite a vault to a newer format **on open**. Upgrade is an explicit write. Writers default to the newest **stable** container version they support, which for this draft is `"1.0"`.
+An implementation MUST NOT silently rewrite a vault to a newer format **on open**. Upgrade is an explicit write. Writers default to `"1.0"`. `"1.1"` is written only by an explicit hybrid MSK replacement ([Section 8.5](#85-container-version-11)). Implementations that support hybrid MSKs MUST read both `"1.0"` and `"1.1"`.
 
 If `canReadVersion` is false, the implementation MUST fail closed (`ERR_VERSION`).
 

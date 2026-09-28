@@ -75,7 +75,9 @@ The OPRF secret stays on this host.
 }
 ```
 
-The proof signature is Ed25519 over this UTF-8 text, each line ending in LF:
+The proof signature uses `msk.algorithm` (`ed25519` or `mldsa65-ed25519`) over
+this UTF-8 text, each line ending in LF. `mldsa65-ed25519` is the concatenation
+defined in Discovery Protocol `spec/authorization.md`: both halves MUST verify.
 
 ```text
 SComm/Pubkey/1/vault_open
@@ -127,7 +129,8 @@ stay verifiable.
 }
 ```
 
-The signature is Ed25519 by the identity's armed MSK over this UTF-8 text,
+The signature is by the identity's armed MSK (`msk_signature.algorithm` matches
+the armed algorithm) over this UTF-8 text,
 each line ending in LF:
 
 ```text
@@ -140,7 +143,7 @@ generation_hash=<container.generation_hash>
 
 The host checks, without decrypting (SPEC.md §11.2):
 
-1. `format` is `CKVF` and `version` is `1.0` (`400 unsupported_version`
+1. `format` is `CKVF` and `version` is `1.0` or `1.1` (`400 unsupported_version`
    otherwise);
 2. `container.vault_id` equals the path `vault_id`, which is bound to
    `identity_id`; an unbound pair is `404 unknown_principal`;

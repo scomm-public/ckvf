@@ -283,7 +283,8 @@ class MskCurrent {
   final String mskId;
   final String algorithm;
   final String publicKey;
-  final String privateKey;
+  /// Ed25519: base64url 32-byte seed. Hybrid: `{mldsa65_seed, ed25519_seed}`.
+  final Object privateKey;
   final String activatedAt;
 
   Map<String, dynamic> toJson() => {
@@ -298,7 +299,7 @@ class MskCurrent {
         mskId: json['msk_id'] as String,
         algorithm: json['algorithm'] as String,
         publicKey: json['public_key'] as String,
-        privateKey: json['private_key'] as String,
+        privateKey: json['private_key'] as Object,
         activatedAt: json['activated_at'] as String,
       );
 }
