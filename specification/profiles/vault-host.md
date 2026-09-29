@@ -11,9 +11,11 @@ record API. It is not a Discovery Document and it is not part of
 
 The directory and its mailer are a different origin (`http://127.0.0.1:3000`,
 `https://discovery.scomm.ai`). The vault host does not send mail and does not
-accept a mailbox address or `mailboxSha256`. It never calls the directory at
-runtime; the directory's view of the mailbox reaches it only inside a signed
-grant.
+accept a mailbox address. At open and rebind the client sends
+`mailbox_sha256` (the unsalted mailbox hash). The host stores that locator
+and fetches the armed MSK public key from `GET /v1/msk?sha256=` on the
+directory. It does not store the public key. Later signature checks use a
+fresh fetch of that same locator.
 
 ## 1. Identifiers
 
@@ -61,6 +63,7 @@ The OPRF secret stays on this host.
   "identity_id": "<64 hex>",
   "vault_id": "<vault id>",
   "otp_grant": "<grant>",
+  "mailbox_sha256": "<64 hex>",
   "msk": { "algorithm": "ed25519", "public_key": "<base64url 32>" },
   "msk_proof": {
     "protocol_version": 1,
@@ -95,11 +98,14 @@ The host MUST, in this order:
    the same `identity_id`, and `msk_fingerprint` equal to the SHA-256 of
    `msk.public_key`;
 2. require `msk_proof.payload` to name this `vault_id` and the grant's `jti`;
-3. verify the proof signature with `msk.public_key`, check the timestamp
-   window, and spend the nonce;
-4. spend the grant `jti`;
-5. bind `identity_id → vault_id → MSK` only if the identity has no vault
-   (`409 vault_already_open` otherwise).
+3. fetch `GET /v1/msk?sha256={mailbox_sha256}` and require that armed key
+   and algorithm to equal `msk`;
+4. verify the proof signature with that key, check the timestamp window,
+   and spend the nonce;
+5. spend the grant `jti`;
+6. bind `identity_id → vault_id → mailbox_sha256` only if the identity has
+   no vault (`409 vault_already_open` otherwise). The public key is not
+   stored.
 
 A proof or grant failure is `401`. The grant is not spent when the proof
 fails, so a stolen grant without the MSK private key is useless and a
@@ -109,12 +115,14 @@ client bug does not burn the user's grant.
 
 ### 2.3 MSK rebind
 
-`POST /v1/vault/{vault_id}/msk` has the same body without `vault_id`. The
-grant purpose is `replace_msk`, `msk_fingerprint` names the **new** MSK, and
-the proof `operation` is `arm_replacement_msk`, signed by the new MSK. The
-host returns `404 unknown_principal` if `vault_id` is not bound to
-`identity_id`. It archives the previous MSK public key so older generations
-stay verifiable.
+`POST /v1/vault/{vault_id}/msk` has the same body without `vault_id`,
+including `mailbox_sha256`. The grant purpose is `replace_msk`,
+`msk_fingerprint` names the **new** MSK, and the proof `operation` is
+`arm_replacement_msk`, signed by the new MSK. The host returns
+`404 unknown_principal` if `vault_id` is not bound to `identity_id`. It
+checks the new key against Discovery and does not store it. Replaced
+public keys come from Discovery's archived list, so older generations stay
+verifiable.
 
 ### 2.4 Records
 
@@ -239,7 +247,7 @@ Purposes consumed here: `vault_open`, `replace_msk`, `recovery_envelope`,
 A vault is opened only after the directory already has an armed MSK for that
 mailbox. The mailer enforces that precondition by refusing vault-purpose
 grants without one and by writing the armed key's fingerprint into the
-grant. This host never looks up the directory.
+grant. This host fetches the armed MSK from Discovery `GET /v1/msk?sha256=` on every verification and does not store the public key. `identity_id` is that same lowercase hex SHA-256 of the canonical mailbox. There is no identity OPRF.
 
 ## 4. Read authorization
 

@@ -959,7 +959,7 @@ Writers MUST compute `short_key_id` as specified. Readers MUST recompute it and 
 | `active` | present (unless deleted) | Eligible for new use according to application policy |
 | `retired` | retained unless separately deleted | Not for new encryption/signing; kept for historical decryption/verification |
 | `revoked` | retained unless separately deleted | Cryptographically or administratively revoked at the family layer as applicable |
-| `compromised` | retained or deleted per user decision | Known or suspected exposure |
+| `compromised` | retained or deleted per user decision | Legacy container value for known or suspected exposure |
 
 Severity for merge is:
 
@@ -968,6 +968,12 @@ compromised > revoked > retired > active
 ```
 
 Retire MUST NOT delete `private_key`. Revoke MUST NOT delete `private_key`. Only `DELETE_PRIVATE_KEY` may set `private_key` to `null`.
+
+`status` is the cryptographic lifecycle projection inside the container. It is not Discovery publication and it is not private-material state. `private_key: null` plus a tombstone means material `destroyed`. A missing private key MUST NOT be read as `revoked`.
+
+`compromised` remains a legal container value so existing vaults still open. SComm applications MUST project it as lifecycle `revoked` with revocation reason `KEY_COMPROMISE`. New SComm writes SHOULD use `revoked` plus that reason in metadata rather than a new `compromised` record. See [profiles/scomm-key-lifecycle.md](profiles/scomm-key-lifecycle.md).
+
+The SComm profile MUST NOT apply extension `std:signing-key-retention` with policy `delete-on-retire`. That policy destroys a sign-only private key when `status` leaves `active`, which couples retirement to destruction. Destruction stays an explicit `DELETE_PRIVATE_KEY`.
 
 ### 9.7. Imported keys
 
@@ -1036,6 +1042,8 @@ Vault state for sync is identified by:
 - `generation` MUST increase by exactly 1 on each commit relative to the parent.
 - `previous_generation_hash` MUST equal the parent’s `generation_hash`.
 - Stale generation MUST be detected. A writer whose parent is not the current head MUST NOT silently overwrite.
+- A client MUST reject a remote generation lower than the generation it last synced. The same generation with a different `generation_hash` is a fork and MUST be merged, never replaced.
+- A client MUST pin the current MSK. A different MSK on a fetched generation is accepted only when the directory's armed key matches it.
 
 There is **no** silent last-writer-wins. Timestamps MUST NOT be used as the primary consistency mechanism.
 
@@ -1122,7 +1130,8 @@ Unlock slots are unioned by `slot_id`.
 
 - If both sides have the same `slot_id` with identical wrap and KDF fields, keep one copy.
 - If the same `slot_id` has different wrap material, that is a conflict (`ERR_MERGE_SLOT`); implementations MUST NOT guess.
-- Removal is conservative: a slot is omitted from the merge only if both sides omit it, or if an authorized `REMOVE_DEVICE` (or password-slot removal operation in `UPDATE_METADATA` / profile) is present and accepted. A stale device MUST NOT cause omission of a slot that the other side still carries.
+- Removal is conservative when there is no common ancestor: a slot is omitted from the merge only if both sides omit it. A stale device MUST NOT cause omission of a slot that the other side still carries.
+- When both sides share a base generation, a slot (or a `priv:` device entry) that the base contains and one side omits stays omitted. A tombstone on either side clears that key's private material. Conflicts MUST be returned to the caller.
 
 After merging slots, all slots MUST unwrap to the same VEK. If they do not, the merge MUST fail (`ERR_MERGE_VEK`). VEK divergence implies fork-with-rewrap and is a hard conflict.
 

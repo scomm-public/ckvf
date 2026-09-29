@@ -87,6 +87,7 @@ class WrapParams {
     required this.iv,
     required this.ciphertext,
     required this.tag,
+    this.epk,
   });
 
   final String alg;
@@ -94,11 +95,15 @@ class WrapParams {
   final String ciphertext;
   final String tag;
 
+  /// Ephemeral X25519 public key for `device-hpke-x25519`.
+  final String? epk;
+
   Map<String, dynamic> toJson() => {
         'alg': alg,
         'iv': iv,
         'ciphertext': ciphertext,
         'tag': tag,
+        if (epk != null) 'epk': epk,
       };
 
   factory WrapParams.fromJson(Map<String, dynamic> json) => WrapParams(
@@ -106,6 +111,7 @@ class WrapParams {
         iv: json['iv'] as String,
         ciphertext: json['ciphertext'] as String,
         tag: json['tag'] as String,
+        epk: json['epk'] as String?,
       );
 }
 

@@ -10,6 +10,7 @@ class DartCkvfCrypto implements CkvfCrypto {
   DartCkvfCrypto();
 
   final Ed25519 _ed25519 = Ed25519();
+  final X25519 _x25519 = X25519();
   final AesGcm _aesGcm = AesGcm.with256bits();
   final Random _random = Random.secure();
 
@@ -122,5 +123,25 @@ class DartCkvfCrypto implements CkvfCrypto {
         publicKey: SimplePublicKey(publicKey, type: KeyPairType.ed25519),
       ),
     );
+  }
+
+  @override
+  Future<({Uint8List publicKey, Uint8List privateKey})> x25519Generate() async {
+    final pair = await _x25519.newKeyPair();
+    final privateKey = Uint8List.fromList(await pair.extractPrivateKeyBytes());
+    final public = await pair.extractPublicKey();
+    return (
+      publicKey: Uint8List.fromList(public.bytes),
+      privateKey: privateKey,
+    );
+  }
+
+  @override
+  Future<Uint8List> x25519(List<int> privateKey, List<int> publicKey) async {
+    final shared = await _x25519.sharedSecretKey(
+      keyPair: await _x25519.newKeyPairFromSeed(privateKey),
+      remotePublicKey: SimplePublicKey(publicKey, type: KeyPairType.x25519),
+    );
+    return Uint8List.fromList(await shared.extractBytes());
   }
 }

@@ -10,6 +10,8 @@ MergeResult mergePayloads(
   List<UnlockSlot> slotsB, {
   int generationA = 0,
   int generationB = 0,
+  List<UnlockSlot>? baseSlots,
+  bool deletionWins = false,
 }) {
   if (a.identity.identityId != b.identity.identityId) {
     fail('ERR_IDENTITY_MISMATCH');
@@ -24,7 +26,14 @@ MergeResult mergePayloads(
   }
 
   final history = _unionHistory(a.msk.history, b.msk.history);
-  final keys = _mergeKeys(a.keys, b.keys, a.tombstones, b.tombstones, conflicts);
+  final keys = _mergeKeys(
+    a.keys,
+    b.keys,
+    a.tombstones,
+    b.tombstones,
+    conflicts,
+    deletionWins: deletionWins,
+  );
   final preferred = _mergePreferred(a.preferredKeys, b.preferredKeys, keys, conflicts);
   final tombstones = _unionTombstones(a.tombstones, b.tombstones);
   final slots = _mergeSlots(
@@ -33,6 +42,7 @@ MergeResult mergePayloads(
     conflicts,
     generationA,
     generationB,
+    baseSlots: baseSlots,
   );
   final created = a.metadata.createdAt.compareTo(b.metadata.createdAt) <= 0
       ? a.metadata.createdAt
@@ -65,8 +75,9 @@ List<KeyRecord> _mergeKeys(
   List<KeyRecord> b,
   List<Tombstone> tombsA,
   List<Tombstone> tombsB,
-  List<MergeConflict> conflicts,
-) {
+  List<MergeConflict> conflicts, {
+  bool deletionWins = false,
+}) {
   final map = <String, KeyRecord>{};
   for (final k in a) {
     map[k.absoluteKeyId] = k.copyWith();
@@ -95,7 +106,8 @@ List<KeyRecord> _mergeKeys(
           message: 'destructive delete conflict for ${k.absoluteKeyId}',
         ),
       );
-      privateKey = existing.privateKey ?? k.privateKey;
+      privateKey = deletionWins ? null : (existing.privateKey ?? k.privateKey);
+      clear = deletionWins;
     } else {
       privateKey = existing.privateKey ?? k.privateKey;
     }
@@ -168,8 +180,12 @@ List<UnlockSlot> _mergeSlots(
   List<UnlockSlot> b,
   List<MergeConflict> conflicts,
   int generationA,
-  int generationB,
-) {
+  int generationB, {
+  List<UnlockSlot>? baseSlots,
+}) {
+  final baseIds = {for (final s in baseSlots ?? const <UnlockSlot>[]) s.slotId};
+  final aIds = {for (final s in a) s.slotId};
+  final bIds = {for (final s in b) s.slotId};
   final map = <String, UnlockSlot>{};
   for (final s in a) {
     map[s.slotId] = s;
@@ -187,6 +203,12 @@ List<UnlockSlot> _mergeSlots(
     }
     conflicts.add(MergeConflict(code: 'ERR_MERGE_SLOT', message: s.slotId));
     fail('ERR_MERGE_SLOT', 'slot ${s.slotId} differs');
+  }
+  if (baseSlots != null) {
+    map.removeWhere(
+      (id, _) =>
+          baseIds.contains(id) && (!aIds.contains(id) || !bIds.contains(id)),
+    );
   }
   return map.values.toList();
 }

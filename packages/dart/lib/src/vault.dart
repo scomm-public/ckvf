@@ -244,6 +244,22 @@ Future<UnlockedVault> importPrivateKey(
   var publicBytes = Uint8List.fromList(publicKey);
   if (encoding == 'openpgp-tsk') {
     publicBytes = canonicalOpenPgpPublicKey(publicKey, privateKey);
+  } else if (encoding == 'pkcs8' || encoding == 'pkcs12') {
+    if (publicKey.length == privateKey.length) {
+      var same = true;
+      for (var i = 0; i < publicKey.length; i++) {
+        if (publicKey[i] != privateKey[i]) {
+          same = false;
+          break;
+        }
+      }
+      if (same) {
+        fail('ERR_ENCODING', 'public key must not be the private key');
+      }
+    }
+    if (publicKey.isEmpty || publicKey[0] != 0x30) {
+      fail('ERR_ENCODING', 'public key must be SPKI DER');
+    }
   }
   final ids = await keyIds(publicBytes, crypto);
   final record = KeyRecord(
@@ -595,6 +611,7 @@ Future<({UnlockedVault vault, List<MergeConflict> conflicts})> mergeOnto(
   UnlockedVault local,
   CkvfCrypto crypto, [
   String? now,
+  UnlockedVault? base,
 ]) async {
   if (head.container.vaultId != local.container.vaultId) {
     fail('ERR_FORMAT', 'vault_id');
@@ -607,6 +624,8 @@ Future<({UnlockedVault vault, List<MergeConflict> conflicts})> mergeOnto(
     local.container.unlockSlots,
     generationA: head.container.generation,
     generationB: local.container.generation,
+    baseSlots: base?.container.unlockSlots,
+    deletionWins: base != null,
   );
   merged.payload.metadata.updatedAt = rfc3339(now);
   final vek = rotated ? local.vek : head.vek;

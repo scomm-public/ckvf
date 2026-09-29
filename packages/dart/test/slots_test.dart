@@ -100,6 +100,12 @@ class FastKdfCrypto implements CkvfCrypto {
     List<int> signature,
   ) =>
       _inner.ed25519Verify(publicKey, message, signature);
+  @override
+  Future<({Uint8List publicKey, Uint8List privateKey})> x25519Generate() =>
+      _inner.x25519Generate();
+  @override
+  Future<Uint8List> x25519(List<int> privateKey, List<int> publicKey) =>
+      _inner.x25519(privateKey, publicKey);
 }
 
 final key1 =

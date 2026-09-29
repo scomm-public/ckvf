@@ -40,6 +40,17 @@ abstract class CkvfCrypto {
     List<int> message,
     List<int> signature,
   );
+
+  /// X25519 keypair for `device-hpke-x25519`. Default throws so providers
+  /// that never wrap device slots need not implement it.
+  Future<({Uint8List publicKey, Uint8List privateKey})> x25519Generate() {
+    throw UnsupportedError('x25519Generate');
+  }
+
+  /// X25519 Diffie-Hellman. [privateKey] and [publicKey] are 32 bytes.
+  Future<Uint8List> x25519(List<int> privateKey, List<int> publicKey) {
+    throw UnsupportedError('x25519');
+  }
 }
 
 bool constantTimeEqual(List<int> a, List<int> b) {

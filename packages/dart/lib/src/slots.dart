@@ -13,6 +13,7 @@ import 'types.dart';
 import 'vault.dart';
 
 const deviceWrapMethod = 'device-wrap-a256gcm';
+const deviceHpkeMethod = 'device-hpke-x25519';
 const passwordOprfMethod = 'password-oprf-argon2id';
 const recoveryCodeOprfMethod = 'recovery-code-oprf-argon2id';
 
@@ -340,6 +341,99 @@ Future<UnlockSlot> wrapDeviceSlot(
     method: deviceWrapMethod,
     createdAt: rfc3339(now),
     wrap: await _wrap(crypto, kek, vek, deviceWrapMethod, id, vaultId),
+  );
+}
+
+Future<Uint8List> _hmacSha256(
+  CkvfCrypto crypto,
+  List<int> key,
+  List<int> data,
+) async {
+  var k = Uint8List.fromList(key);
+  if (k.length > 64) k = await crypto.sha256(k);
+  if (k.length < 64) {
+    final padded = Uint8List(64);
+    padded.setRange(0, k.length, k);
+    k = padded;
+  }
+  final ipad = Uint8List(64);
+  final opad = Uint8List(64);
+  for (var i = 0; i < 64; i++) {
+    ipad[i] = k[i] ^ 0x36;
+    opad[i] = k[i] ^ 0x5c;
+  }
+  final inner = await crypto.sha256([...ipad, ...data]);
+  return crypto.sha256([...opad, ...inner]);
+}
+
+Future<Uint8List> _hpkeKek(
+  CkvfCrypto crypto, {
+  required List<int> shared,
+  required String vaultId,
+  required String slotId,
+}) async {
+  final info = utf8Encode('ckvf/device-hpke/v1|$vaultId|$slotId');
+  final prk = await _hmacSha256(crypto, Uint8List(32), shared);
+  final okm = await _hmacSha256(crypto, prk, [...info, 1]);
+  return Uint8List.fromList(okm.sublist(0, 32));
+}
+
+/// Wraps [vek] to a device X25519 [recipientPublicKey] (32 bytes).
+Future<UnlockSlot> wrapDeviceHpkeSlot(
+  CkvfCrypto crypto, {
+  required String vaultId,
+  required List<int> vek,
+  required List<int> recipientPublicKey,
+  String? slotId,
+  String? now,
+}) async {
+  if (recipientPublicKey.length != 32) {
+    fail('ERR_UNLOCK', 'X25519 public key must be 32 bytes');
+  }
+  final id = slotId ?? bytesToBase64url(crypto.randomBytes(16));
+  final eph = await crypto.x25519Generate();
+  final shared = await crypto.x25519(eph.privateKey, recipientPublicKey);
+  final kek = await _hpkeKek(crypto, shared: shared, vaultId: vaultId, slotId: id);
+  final wrap = await _wrap(crypto, kek, vek, deviceHpkeMethod, id, vaultId);
+  return UnlockSlot(
+    slotId: id,
+    method: deviceHpkeMethod,
+    createdAt: rfc3339(now),
+    wrap: WrapParams(
+      alg: wrap.alg,
+      iv: wrap.iv,
+      ciphertext: wrap.ciphertext,
+      tag: wrap.tag,
+      epk: bytesToBase64url(eph.publicKey),
+    ),
+  );
+}
+
+/// Opens a `device-hpke-x25519` slot with this device's X25519 private key.
+Future<UnlockedVault> openVaultWithDeviceHpke(
+  Object containerOrJson, {
+  required String slotId,
+  required List<int> privateKey,
+  required CkvfCrypto crypto,
+  ParserLimits? limits,
+}) {
+  return openVaultWith(
+    containerOrJson,
+    crypto: crypto,
+    limits: limits,
+    unwrap: (container) async {
+      final slot = _slotById(container, slotId, const [deviceHpkeMethod]);
+      final epk = slot.wrap.epk;
+      if (epk == null) fail('ERR_UNLOCK', 'missing epk');
+      final shared = await crypto.x25519(privateKey, base64urlToBytes(epk, 32));
+      final kek = await _hpkeKek(
+        crypto,
+        shared: shared,
+        vaultId: container.vaultId,
+        slotId: slot.slotId,
+      );
+      return _unwrap(crypto, kek, slot, container.vaultId);
+    },
   );
 }
 

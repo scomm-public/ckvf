@@ -8,6 +8,7 @@ const keyPurposes = ['sign', 'encrypt', 'auth'];
 const unlockMethods = [
   'password-argon2id',
   'device-wrap-a256gcm',
+  'device-hpke-x25519',
   'password-oprf-argon2id',
   'recovery-code-oprf-argon2id',
 ];

@@ -143,8 +143,9 @@ UnlockSlot validateUnlockSlot(
   } else if (o.containsKey('oprf')) {
     fail('ERR_FORMAT', 'oprf is only allowed on *-oprf-argon2id slots');
   }
-  if (method == 'device-wrap-a256gcm' && o.containsKey('kdf')) {
-    fail('ERR_KDF', 'device-wrap slots carry no kdf');
+  if ((method == 'device-wrap-a256gcm' || method == 'device-hpke-x25519') &&
+      o.containsKey('kdf')) {
+    fail('ERR_KDF', 'device slots carry no kdf');
   }
   if (method == 'password-argon2id' || pepper) {
     if (o['kdf'] is! Map) fail('ERR_KDF', 'missing kdf');
@@ -175,7 +176,18 @@ UnlockSlot validateUnlockSlot(
   }
   if (o['wrap'] is! Map) fail('ERR_FORMAT', 'wrap');
   final w = Map<String, dynamic>.from(o['wrap'] as Map);
-  rejectUnknownKeys(w, const ['alg', 'iv', 'ciphertext', 'tag']);
+  rejectUnknownKeys(
+    w,
+    method == 'device-hpke-x25519'
+        ? const ['alg', 'iv', 'ciphertext', 'tag', 'epk']
+        : const ['alg', 'iv', 'ciphertext', 'tag'],
+  );
+  if (method == 'device-hpke-x25519') {
+    if (w['epk'] is! String) fail('ERR_FORMAT', 'wrap.epk');
+    base64urlToBytes(w['epk'] as String, 32);
+  } else if (w.containsKey('epk')) {
+    fail('ERR_FORMAT', 'wrap.epk');
+  }
   if (w['alg'] != 'A256GCM') fail('ERR_NOT_IMPLEMENTED', 'wrap alg');
   if (w['iv'] is! String ||
       w['ciphertext'] is! String ||
