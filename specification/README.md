@@ -26,6 +26,7 @@ Read SPEC.md first. Companion documents do not override SPEC.md unless they are 
 | [profiles/dns-01.md](profiles/dns-01.md) | DNS ownership profile (not ACME) |
 | [profiles/reference-key-service.md](profiles/reference-key-service.md) | Non-normative reference key service |
 | [profiles/scomm-pubkey-migration.md](profiles/scomm-pubkey-migration.md) | Adapter notes for pubkey.scomm.ai |
+| [profiles/scomm-key-lifecycle.md](profiles/scomm-key-lifecycle.md) | How CKVF status and `DELETE_PRIVATE_KEY` map to the SComm key lifecycle |
 | [REFERENCE-IMPLEMENTATIONS.md](REFERENCE-IMPLEMENTATIONS.md) | Known implementations |
 | [ietf/README.md](ietf/README.md) | Future IETF packaging notes |
 | [ietf/draft-ckvf-community-00.md](ietf/draft-ckvf-community-00.md) | kramdown-rfc rendering of this draft |

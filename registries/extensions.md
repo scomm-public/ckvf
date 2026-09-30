@@ -45,6 +45,13 @@ Protocol signing-key lookup).
 Readers that do not implement this extension still read the vault correctly;
 they may simply retain retired signing keys they create themselves.
 
+**SComm profile.** Writers that follow
+[scomm-key-lifecycle.md](../specification/profiles/scomm-key-lifecycle.md)
+MUST NOT set `policy` to `delete-on-retire`. Retirement and
+`DELETE_PRIVATE_KEY` stay separate operations. A signing private key MAY
+be destroyed later by an explicit `DELETE_PRIVATE_KEY`. An encryption
+private key is unchanged by this extension in every profile.
+
 ## Identifier syntax
 
 ```
