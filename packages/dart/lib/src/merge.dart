@@ -1,3 +1,4 @@
+import 'custody.dart';
 import 'aad.dart';
 import 'errors.dart';
 import 'registries.dart';
@@ -26,12 +27,17 @@ MergeResult mergePayloads(
   }
 
   final history = _unionHistory(a.msk.history, b.msk.history);
+  final bound = {
+    ...nonExportableKeyIds(a.criticalExtensions),
+    ...nonExportableKeyIds(b.criticalExtensions),
+  };
   final keys = _mergeKeys(
     a.keys,
     b.keys,
     a.tombstones,
     b.tombstones,
     conflicts,
+    bound,
     deletionWins: deletionWins,
   );
   final preferred = _mergePreferred(a.preferredKeys, b.preferredKeys, keys, conflicts);
@@ -63,7 +69,7 @@ MergeResult mergePayloads(
         _unionExtensions(a.criticalExtensions, b.criticalExtensions, conflicts),
   );
 
-  if (payload.criticalExtensions.isNotEmpty) {
+  if (payload.criticalExtensions.any((e) => !isUnderstoodCriticalExtension(e))) {
     fail('ERR_CRITICAL_EXTENSION', 'unknown critical extension during merge');
   }
 
@@ -75,7 +81,8 @@ List<KeyRecord> _mergeKeys(
   List<KeyRecord> b,
   List<Tombstone> tombsA,
   List<Tombstone> tombsB,
-  List<MergeConflict> conflicts, {
+  List<MergeConflict> conflicts,
+  Set<String> nonExportable, {
   bool deletionWins = false,
 }) {
   final map = <String, KeyRecord>{};
@@ -114,12 +121,19 @@ List<KeyRecord> _mergeKeys(
     final created = existing.createdAt.compareTo(k.createdAt) <= 0
         ? existing.createdAt
         : k.createdAt;
+    final strip = clear || nonExportable.contains(k.absoluteKeyId);
     map[k.absoluteKeyId] = existing.copyWith(
       status: status,
-      privateKey: privateKey,
+      privateKey: strip ? null : privateKey,
       createdAt: created,
-      clearPrivateKey: clear,
+      clearPrivateKey: strip,
     );
+  }
+  for (final id in nonExportable) {
+    final existing = map[id];
+    if (existing != null && existing.privateKey != null) {
+      map[id] = existing.copyWith(clearPrivateKey: true);
+    }
   }
   final keys = map.values.toList()
     ..sort((x, y) => x.absoluteKeyId.compareTo(y.absoluteKeyId));

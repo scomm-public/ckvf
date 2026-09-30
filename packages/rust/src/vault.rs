@@ -8,6 +8,7 @@ use crate::crypto::{
     aes256gcm_decrypt, aes256gcm_encrypt, argon2id, constant_time_equal, ed25519_from_seed,
     ed25519_generate, random_bytes, sha256,
 };
+use crate::custody::is_understood_critical_extension;
 use crate::errors::{fail, fail_msg, CkvfError};
 use crate::generation::compute_generation_hash;
 use crate::identity::{assert_identity, make_identity};
@@ -161,7 +162,11 @@ where
     let json: Value = serde_json::from_slice(&plaintext)
         .map_err(|_| CkvfError::msg("ERR_JSON", "payload"))?;
     let payload = validate_payload_shape(&json, resolved)?;
-    if !payload.critical_extensions.is_empty() {
+    if payload
+        .critical_extensions
+        .iter()
+        .any(|e| !is_understood_critical_extension(e))
+    {
         return fail("ERR_CRITICAL_EXTENSION");
     }
     assert_identity(&payload.identity)?;

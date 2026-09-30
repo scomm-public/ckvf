@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use std::sync::OnceLock;
 
 use crate::b64;
+use crate::custody::{assert_custody_bindings, validate_key_custody_data, KEY_CUSTODY_EXTENSION_ID};
 use crate::errors::{fail, fail_msg, CkvfError};
 use crate::limits::{ParserLimits, DEFAULT_LIMITS, PEPPER_MIN_ARGON2ID};
 use crate::registries::{
@@ -387,6 +388,7 @@ pub fn validate_payload_shape(raw: &Value, limits: ParserLimits) -> Result<Vault
         true,
         limits,
     )?;
+    assert_custody_bindings(o)?;
     VaultPayload::from_json(raw).ok_or_else(|| CkvfError::msg("ERR_FORMAT", "payload"))
 }
 
@@ -546,7 +548,9 @@ pub fn validate_extensions(
         if encoded.len() > limits.max_extension_bytes {
             return fail_msg("ERR_PARSER_LIMIT", "extension too large");
         }
-        if critical {
+        if id == KEY_CUSTODY_EXTENSION_ID {
+            validate_key_custody_data(o.get("data").unwrap_or(&Value::Null), critical)?;
+        } else if critical {
             return fail_msg(
                 "ERR_CRITICAL_EXTENSION",
                 format!("unknown critical extension {id}"),

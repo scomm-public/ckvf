@@ -19,7 +19,8 @@ SComm.AI maintains this specification and the reference SDKs. SComm does not hos
 | [`conformance/`](conformance/) | Conformance profiles and result schema | Apache-2.0 |
 | [`packages/js`](packages/js) | JavaScript / TypeScript (`@ckvf/core`, `@ckvf/node`, `@ckvf/browser`, `@ckvf/conformance`) | Apache-2.0 |
 | [`packages/dart`](packages/dart) | Dart (`ckvf`) | Apache-2.0 |
-| [`packages/go`](packages/go), [`rust`](packages/rust), [`dotnet`](packages/dotnet), [`kotlin`](packages/kotlin), [`swift`](packages/swift) | SDK templates | Apache-2.0 |
+| [`packages/rust`](packages/rust) | Rust (`ckvf` / `scomm_vault`) | Apache-2.0 |
+| [`packages/go`](packages/go), [`dotnet`](packages/dotnet), [`kotlin`](packages/kotlin), [`swift`](packages/swift) | SDK templates | Apache-2.0 |
 
 Content keys (OpenPGP TSK vs S/MIME PKCS#8/PKCS#12, `algorithm_suite`): [docs/content-keys.md](docs/content-keys.md).
 
@@ -32,7 +33,7 @@ Layering vs Discovery Protocol: [docs/layering.md](docs/layering.md).
 | [`packages/js`](packages/js) | JavaScript / TypeScript | Implemented (0.1.0) |
 | [`packages/dart`](packages/dart) | Dart | Implemented (0.1.0) |
 | [`packages/go`](packages/go) | Go | Template |
-| [`packages/rust`](packages/rust) | Rust | Template |
+| [`packages/rust`](packages/rust) | Rust | Implemented (0.1.0) |
 | [`packages/dotnet`](packages/dotnet) | .NET | Template |
 | [`packages/kotlin`](packages/kotlin) | Kotlin | Template |
 | [`packages/swift`](packages/swift) | Swift | Template |

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'base64url.dart';
+import 'custody.dart';
 import 'errors.dart';
 import 'limits.dart';
 import 'registries.dart';
@@ -243,6 +244,7 @@ VaultPayload validatePayloadShape(
   }
   validateExtensions(o['extensions'], false, limits);
   validateExtensions(o['critical_extensions'], true, limits);
+  assertCustodyBindings(o);
   return VaultPayload.fromJson(o);
 }
 
@@ -343,7 +345,9 @@ List<Extension> validateExtensions(
     if (encoded.length > limits.maxExtensionBytes) {
       fail('ERR_PARSER_LIMIT', 'extension too large');
     }
-    if (critical) {
+    if (id == keyCustodyExtensionId) {
+      validateKeyCustodyData(o['data'], critical: critical);
+    } else if (critical) {
       fail('ERR_CRITICAL_EXTENSION', 'unknown critical extension $id');
     }
     return Extension.fromJson(o);

@@ -21,6 +21,7 @@ import 'src/version.dart' as version_api;
 
 export 'src/aad.dart';
 export 'src/base64url.dart';
+export 'src/custody.dart';
 export 'src/crypto_provider.dart';
 export 'src/errors.dart';
 export 'src/generation.dart';

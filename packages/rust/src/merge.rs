@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::aad::slot_fingerprint;
+use crate::custody::{is_understood_critical_extension, non_exportable_key_ids};
 use crate::errors::{fail, fail_msg, CkvfError};
 use crate::registries::status_severity;
 use crate::types::{
@@ -30,7 +31,16 @@ pub fn merge_payloads(
         return fail_msg("ERR_MERGE_MSK", "current MSK mismatch is a hard conflict");
     }
     let history = union_history(&a.msk.history, &b.msk.history);
-    let keys = merge_keys(&a.keys, &b.keys, &a.tombstones, &b.tombstones, &mut conflicts);
+    let mut bound = non_exportable_key_ids(&a.critical_extensions);
+    bound.extend(non_exportable_key_ids(&b.critical_extensions));
+    let keys = merge_keys(
+        &a.keys,
+        &b.keys,
+        &a.tombstones,
+        &b.tombstones,
+        &mut conflicts,
+        &bound,
+    );
     let preferred = merge_preferred(&a.preferred_keys, &b.preferred_keys, &keys, &mut conflicts);
     let tombstones = union_tombstones(&a.tombstones, &b.tombstones);
     let slots = merge_slots(
@@ -70,7 +80,11 @@ pub fn merge_payloads(
             &mut conflicts,
         ),
     };
-    if !payload.critical_extensions.is_empty() {
+    if payload
+        .critical_extensions
+        .iter()
+        .any(|e| !is_understood_critical_extension(e))
+    {
         return fail_msg(
             "ERR_CRITICAL_EXTENSION",
             "unknown critical extension during merge",
@@ -89,6 +103,7 @@ fn merge_keys(
     tombs_a: &[Tombstone],
     tombs_b: &[Tombstone],
     conflicts: &mut Vec<MergeConflict>,
+    non_exportable: &std::collections::BTreeSet<String>,
 ) -> Vec<KeyRecord> {
     let mut map: BTreeMap<String, KeyRecord> = BTreeMap::new();
     for k in a {
@@ -136,10 +151,21 @@ fn merge_keys(
             k.absolute_key_id.clone(),
             existing.copy_with(
                 Some(&status),
-                Some(if clear { None } else { private_key }),
+                Some(if clear || non_exportable.contains(&k.absolute_key_id) {
+                    None
+                } else {
+                    private_key
+                }),
                 Some(&created),
             ),
         );
+    }
+    for id in non_exportable {
+        if let Some(existing) = map.get(id).cloned() {
+            if existing.private_key.is_some() {
+                map.insert(id.clone(), existing.copy_with(None, Some(None), None));
+            }
+        }
     }
     map.into_values().collect()
 }

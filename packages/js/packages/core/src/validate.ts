@@ -1,3 +1,4 @@
+import { assertCustodyBindings, KEY_CUSTODY_EXTENSION_ID, validateKeyCustodyData } from "./custody.js";
 import { fail } from "./errors.js";
 import { DEFAULT_LIMITS, type ParserLimits } from "./limits.js";
 import { base64urlToBytes } from "./base64url.js";
@@ -145,6 +146,7 @@ export function validatePayloadShape(raw: unknown, limits: ParserLimits = DEFAUL
   if (!Array.isArray(o.tombstones) || o.tombstones.length > limits.maxTombstones) fail("ERR_PARSER_LIMIT", "tombstones");
   validateExtensions(o.extensions, false, limits);
   validateExtensions(o.critical_extensions, true, limits);
+  assertCustodyBindings(o);
   return o as unknown as VaultPayload;
 }
 
@@ -217,7 +219,9 @@ function validateExtensions(raw: unknown, critical: boolean, limits: ParserLimit
     if (!("data" in o)) fail("ERR_EXTENSION", "data required");
     const encoded = JSON.stringify(o.data);
     if (encoded.length > limits.maxExtensionBytes) fail("ERR_PARSER_LIMIT", "extension too large");
-    if (critical) fail("ERR_CRITICAL_EXTENSION", `unknown critical extension ${o.id}`);
+    if (o.id === KEY_CUSTODY_EXTENSION_ID) {
+      validateKeyCustodyData(o.data, critical);
+    } else if (critical) fail("ERR_CRITICAL_EXTENSION", `unknown critical extension ${o.id}`);
     return o as unknown as Extension;
   });
 }

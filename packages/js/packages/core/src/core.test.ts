@@ -112,6 +112,60 @@ test("merge unions keys and escalates status", () => {
   assert.equal(merged.payload.keys.find((k) => k.absolute_key_id === "K1")?.status, "retired");
 });
 
+test("device-bound custody is not filled from another generation", () => {
+  const key = (status: "active" | "revoked", private_key: string | null) =>
+    ({
+      absolute_key_id: "K1",
+      short_key_id: "0000-0000",
+      family: "openpgp",
+      algorithm: "Ed25519",
+      algorithm_suite: null,
+      encoding: "openpgp-tsk",
+      purpose: ["sign"] as KeyPurpose[],
+      public_key: "AA",
+      private_key,
+      created_at: "2026-08-17T00:00:00Z",
+      status,
+      metadata: {} as Record<string, never>,
+    }) as const;
+  const base = {
+    identity: { type: "email" as const, value: "a@example.com", identity_id: "x" },
+    msk: {
+      current: {
+        msk_id: "m",
+        algorithm: "Ed25519" as const,
+        public_key: "p",
+        private_key: "s",
+        activated_at: "2026-08-17T00:00:00Z",
+      },
+      history: [],
+    },
+    preferred_keys: {},
+    metadata: { created_at: "2026-08-17T00:00:00Z", updated_at: "2026-08-17T00:00:00Z" },
+    tombstones: [],
+    extensions: [],
+  };
+  const merged = mergePayloads(
+    { ...base, keys: [key("active", "BB")], critical_extensions: [] },
+    {
+      ...base,
+      keys: [key("revoked", null)],
+      critical_extensions: [
+        {
+          id: "std:key-custody",
+          critical: true,
+          data: { absolute_key_id: "K1", custody: "device-bound", key_ref: "keystore:1" },
+        },
+      ],
+    },
+    [],
+    [],
+  );
+  assert.equal(merged.payload.keys[0]?.status, "revoked");
+  assert.equal(merged.payload.keys[0]?.private_key, null);
+  assert.equal(merged.payload.critical_extensions[0]?.id, "std:key-custody");
+});
+
 test("utf8 helper roundtrip", () => {
   assert.equal(Buffer.from(utf8Encode("CKVF")).toString(), "CKVF");
 });

@@ -1,3 +1,4 @@
+import { isUnderstoodCriticalExtension } from "./custody.js";
 import { vaultAad, wrapAad } from "./aad.js";
 import { bytesToBase64url, base64urlToBytes } from "./base64url.js";
 import type { CkvfCrypto } from "./crypto-provider.js";
@@ -108,7 +109,9 @@ export async function openVault(
     fail("ERR_JSON", "payload");
   }
   const payload = validatePayloadShape(json, limits);
-  if (payload.critical_extensions.length) fail("ERR_CRITICAL_EXTENSION");
+  if (payload.critical_extensions.some((e) => !isUnderstoodCriticalExtension(e))) {
+    fail("ERR_CRITICAL_EXTENSION");
+  }
   await assertIdentity(payload.identity, opts.crypto);
   return { container, payload, vek };
 }

@@ -8,6 +8,7 @@
 mod aad;
 mod b64;
 mod crypto;
+mod custody;
 mod errors;
 mod ffi;
 mod generation;
@@ -36,6 +37,7 @@ pub use crypto::{
     ed25519_generate, ed25519_public_from_seed, ed25519_sign, ed25519_verify, random_bytes, sha256,
     AesGcmResult, Ed25519KeyPair,
 };
+pub use custody::{is_understood_critical_extension, KEY_CUSTODY_EXTENSION_ID};
 pub use errors::{fail, fail_msg, CkvfError, ERROR_CODES};
 pub use generation::{
     assert_generation_hash, compute_generation_hash, detect_generation_conflict,

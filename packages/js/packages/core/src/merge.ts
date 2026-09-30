@@ -11,6 +11,7 @@ import type {
   VaultPayload,
 } from "./types.js";
 import { slotFingerprint } from "./aad.js";
+import { isUnderstoodCriticalExtension, nonExportableKeyIds } from "./custody.js";
 
 export function mergePayloads(a: VaultPayload, b: VaultPayload, slotsA: UnlockSlot[], slotsB: UnlockSlot[]): MergeResult {
   if (a.identity.identity_id !== b.identity.identity_id) fail("ERR_IDENTITY_MISMATCH");
@@ -23,7 +24,8 @@ export function mergePayloads(a: VaultPayload, b: VaultPayload, slotsA: UnlockSl
   }
 
   const history = unionHistory(a.msk.history, b.msk.history);
-  const keys = mergeKeys(a.keys, b.keys, a.tombstones, b.tombstones, conflicts);
+  const bound = nonExportableKeyIds([...a.critical_extensions, ...b.critical_extensions]);
+  const keys = mergeKeys(a.keys, b.keys, a.tombstones, b.tombstones, conflicts, bound);
   const preferred = mergePreferred(a.preferred_keys, b.preferred_keys, keys, conflicts);
   const tombstones = unionTombstones(a.tombstones, b.tombstones);
   const slots = mergeSlots(slotsA, slotsB, conflicts);
@@ -43,7 +45,7 @@ export function mergePayloads(a: VaultPayload, b: VaultPayload, slotsA: UnlockSl
     critical_extensions: unionExtensions(a.critical_extensions, b.critical_extensions, conflicts),
   };
 
-  if (payload.critical_extensions.length) {
+  if (payload.critical_extensions.some((e) => !isUnderstoodCriticalExtension(e))) {
     fail("ERR_CRITICAL_EXTENSION", "unknown critical extension during merge");
   }
 
@@ -56,6 +58,7 @@ function mergeKeys(
   tombsA: Tombstone[],
   tombsB: Tombstone[],
   conflicts: MergeConflict[],
+  nonExportable: Set<string>,
 ): KeyRecord[] {
   const map = new Map<string, KeyRecord>();
   for (const k of a) map.set(k.absolute_key_id, { ...k });
@@ -88,6 +91,10 @@ function mergeKeys(
       private_key,
       created_at: existing.created_at <= k.created_at ? existing.created_at : k.created_at,
     });
+  }
+  for (const id of nonExportable) {
+    const existing = map.get(id);
+    if (existing?.private_key) map.set(id, { ...existing, private_key: null });
   }
   return [...map.values()].sort((x, y) => x.absolute_key_id.localeCompare(y.absolute_key_id));
 }

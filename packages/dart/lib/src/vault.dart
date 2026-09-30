@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'custody.dart';
 import 'aad.dart';
 import 'base64url.dart';
 import 'crypto_provider.dart';
@@ -178,7 +179,9 @@ Future<UnlockedVault> openVaultWith(
     fail('ERR_JSON', 'payload');
   }
   final payload = validatePayloadShape(json, resolvedLimits);
-  if (payload.criticalExtensions.isNotEmpty) fail('ERR_CRITICAL_EXTENSION');
+  if (payload.criticalExtensions.any((e) => !isUnderstoodCriticalExtension(e))) {
+    fail('ERR_CRITICAL_EXTENSION');
+  }
   await assertIdentity(payload.identity, crypto);
   return UnlockedVault(container: container, payload: payload, vek: vek);
 }

@@ -108,6 +108,67 @@ void main() {
     );
   });
 
+  test('device-bound custody is not filled from another generation', () {
+    KeyRecord key(String status, String? privateKey) => KeyRecord(
+          absoluteKeyId: 'K1',
+          shortKeyId: '0000-0000',
+          family: 'openpgp',
+          algorithm: 'Ed25519',
+          encoding: 'openpgp-tsk',
+          purpose: const ['sign'],
+          publicKey: 'AA',
+          privateKey: privateKey,
+          createdAt: '2026-08-17T00:00:00Z',
+          status: status,
+        );
+    VaultPayload payload(List<KeyRecord> keys, List<Extension> critical) =>
+        VaultPayload(
+          identity: Identity(
+            type: 'email',
+            value: 'a@example.com',
+            identityId: 'x',
+          ),
+          msk: MskState(
+            current: MskCurrent(
+              mskId: 'm',
+              algorithm: 'Ed25519',
+              publicKey: 'p',
+              privateKey: 's',
+              activatedAt: '2026-08-17T00:00:00Z',
+            ),
+            history: const [],
+          ),
+          keys: keys,
+          preferredKeys: {},
+          metadata: VaultMetadata(
+            createdAt: '2026-08-17T00:00:00Z',
+            updatedAt: '2026-08-17T00:00:00Z',
+          ),
+          tombstones: const [],
+          extensions: const [],
+          criticalExtensions: critical,
+        );
+    final custody = Extension(
+      id: keyCustodyExtensionId,
+      critical: true,
+      data: {
+        'absolute_key_id': 'K1',
+        'custody': 'device-bound',
+        'key_ref': 'keystore:1',
+      },
+    );
+    final merged = mergePayloads(
+      payload([key('active', 'BB')], const []),
+      payload([key('revoked', null)], [custody]),
+      const [],
+      const [],
+    );
+    final record = merged.payload.keys.single;
+    expect(record.status, 'revoked');
+    expect(record.privateKey, isNull);
+    expect(merged.payload.criticalExtensions.single.id, keyCustodyExtensionId);
+  });
+
   test('utf8 helper roundtrip', () {
     expect(utf8Decode(utf8Encode('CKVF')), 'CKVF');
   });

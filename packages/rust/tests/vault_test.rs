@@ -279,3 +279,72 @@ fn openpgp_alg30_public_material_length() {
     let pub_key = canonical_openpgp_public_key(&[], Some(&tsk)).unwrap();
     assert_eq!(pub_key[0] & 0x3f, 6);
 }
+
+#[test]
+fn device_bound_custody_is_not_filled_from_another_generation() {
+    fn key(status: &str, private_key: Option<&str>) -> KeyRecord {
+        KeyRecord {
+            absolute_key_id: "K1".into(),
+            short_key_id: "0000-0000".into(),
+            family: "openpgp".into(),
+            algorithm: "Ed25519".into(),
+            algorithm_suite: None,
+            encoding: "openpgp-tsk".into(),
+            purpose: vec!["sign".into()],
+            public_key: "AA".into(),
+            private_key: private_key.map(str::to_string),
+            created_at: NOW.into(),
+            status: status.into(),
+            metadata: serde_json::Map::new(),
+        }
+    }
+    fn payload(record: KeyRecord, critical: Vec<Extension>) -> VaultPayload {
+        VaultPayload {
+            identity: Identity {
+                r#type: "email".into(),
+                value: "a@example.com".into(),
+                identity_id: "x".into(),
+            },
+            msk: MskState {
+                current: MskCurrent {
+                    msk_id: "m".into(),
+                    algorithm: "Ed25519".into(),
+                    public_key: "p".into(),
+                    private_key: "s".into(),
+                    activated_at: NOW.into(),
+                },
+                history: vec![],
+            },
+            keys: vec![record],
+            preferred_keys: serde_json::Map::new(),
+            metadata: VaultMetadata {
+                created_at: NOW.into(),
+                updated_at: NOW.into(),
+            },
+            tombstones: vec![],
+            extensions: vec![],
+            critical_extensions: critical,
+        }
+    }
+    let custody = Extension {
+        id: KEY_CUSTODY_EXTENSION_ID.into(),
+        critical: true,
+        data: json!({
+            "absolute_key_id": "K1",
+            "custody": "device-bound",
+            "key_ref": "keystore:1"
+        }),
+    };
+    let merged = merge_payloads(
+        &payload(key("active", Some("BB")), vec![]),
+        &payload(key("revoked", None), vec![custody]),
+        &[],
+        &[],
+        1,
+        1,
+    )
+    .unwrap();
+    assert_eq!(merged.payload.keys[0].status, "revoked");
+    assert!(merged.payload.keys[0].private_key.is_none());
+    assert_eq!(merged.payload.critical_extensions[0].id, KEY_CUSTODY_EXTENSION_ID);
+}

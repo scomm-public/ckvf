@@ -25,6 +25,7 @@ export * from "./types.js";
 export { constructOperation, verifyOperation, applyOperation } from "./operations.js";
 export { mergePayloads } from "./merge.js";
 export { parseJsonLimited, validateContainerShape, validatePayloadShape, validateKeyRecord } from "./validate.js";
+export { KEY_CUSTODY_EXTENSION_ID } from "./custody.js";
 export {
   createVault,
   openVault,
