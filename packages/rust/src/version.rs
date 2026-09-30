@@ -33,6 +33,13 @@ pub fn supported_algorithms() -> &'static [&'static str] {
         "ML-KEM-768",
         "ML-DSA-65",
         "SLH-DSA-SHA2-128s",
+        "ML-DSA-65+Ed25519",
+        "ML-DSA-87+Ed448",
+        "SLH-DSA-SHAKE-128s",
+        "SLH-DSA-SHAKE-128f",
+        "SLH-DSA-SHAKE-256s",
+        "ML-KEM-768+X25519",
+        "ML-KEM-1024+X448",
     ]
 }
 

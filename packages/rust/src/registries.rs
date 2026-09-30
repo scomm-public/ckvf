@@ -43,6 +43,7 @@ pub fn algorithm_suite_from_algorithm(algorithm: &str) -> Option<&'static str> {
         || n.contains("ml-kem")
         || n.contains("ml-dsa")
         || n.contains("slhdsa")
+        || n.contains("slh-dsa")
         || n.contains("hqc")
         || n.starts_with("pqc-")
     {

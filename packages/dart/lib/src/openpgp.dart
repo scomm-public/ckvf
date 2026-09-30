@@ -53,7 +53,7 @@ Uint8List _publicBodyFromSecret(Uint8List secretBody) {
   if (version == 4) {
     pos = 1 + 4 + 1;
     final algo = secretBody[5];
-    pos += _publicMaterialLength(secretBody, pos, algo);
+    pos += _publicMaterialLength(secretBody, pos, algo, version);
     return secretBody.sublist(0, pos);
   }
   if (version == 6) {
@@ -67,7 +67,8 @@ Uint8List _publicBodyFromSecret(Uint8List secretBody) {
   fail('ERR_ENCODING', 'unsupported OpenPGP key version $version');
 }
 
-int _publicMaterialLength(Uint8List body, int pos, int algo) {
+int _publicMaterialLength(Uint8List body, int pos, int algo, int version) {
+  _rejectRfc9980Version(version, algo);
   switch (algo) {
     case 1:
     case 2:
@@ -105,13 +106,33 @@ int _publicMaterialLength(Uint8List body, int pos, int algo) {
       return 57;
     case 30:
       return 32 + 1952;
+    case 31:
+      return 57 + 2592;
+    case 32:
+    case 33:
+      return 32;
+    case 34:
+      return 64;
     case 35:
       return 32 + 1184;
+    case 36:
+      return 56 + 1568;
     case 105:
     case 106:
       fail('ERR_ENCODING', 'LibrePGP Kyber is not RFC 9980');
     default:
       fail('ERR_ENCODING', 'unsupported OpenPGP algorithm $algo');
+  }
+}
+
+void _rejectRfc9980Version(int version, int algo) {
+  if (algo < 30 || algo > 36) return;
+  if (algo == 35) {
+    if (version == 4 || version == 6) return;
+    fail('ERR_ENCODING', 'algorithm 35 requires OpenPGP version 4 or 6');
+  }
+  if (version != 6) {
+    fail('ERR_ENCODING', 'RFC 9980 algorithm $algo requires OpenPGP version 6');
   }
 }
 

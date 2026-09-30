@@ -72,7 +72,7 @@ fn public_body_from_secret(secret_body: &[u8]) -> Result<Vec<u8>, CkvfError> {
     if version == 4 {
         let mut pos = 1 + 4 + 1;
         let algo = secret_body[5];
-        pos += public_material_length(secret_body, pos, algo)?;
+        pos += public_material_length(secret_body, pos, algo, version)?;
         return Ok(secret_body[..pos].to_vec());
     }
     if version == 6 {
@@ -89,7 +89,13 @@ fn public_body_from_secret(secret_body: &[u8]) -> Result<Vec<u8>, CkvfError> {
     )
 }
 
-fn public_material_length(body: &[u8], pos: usize, algo: u8) -> Result<usize, CkvfError> {
+fn public_material_length(
+    body: &[u8],
+    pos: usize,
+    algo: u8,
+    version: u8,
+) -> Result<usize, CkvfError> {
+    reject_rfc9980_version(version, algo)?;
     match algo {
         1 | 2 | 3 => {
             let p1 = mpi_len(body, pos)?;
@@ -129,10 +135,33 @@ fn public_material_length(body: &[u8], pos: usize, algo: u8) -> Result<usize, Ck
         26 => Ok(56),
         28 => Ok(57),
         30 => Ok(32 + 1952),
+        31 => Ok(57 + 2592),
+        32 | 33 => Ok(32),
+        34 => Ok(64),
         35 => Ok(32 + 1184),
+        36 => Ok(56 + 1568),
         105 | 106 => fail_msg("ERR_ENCODING", "LibrePGP Kyber is not RFC 9980"),
         _ => fail_msg("ERR_ENCODING", format!("unsupported OpenPGP algorithm {algo}")),
     }
+}
+
+fn reject_rfc9980_version(version: u8, algo: u8) -> Result<(), CkvfError> {
+    if !(30..=36).contains(&algo) {
+        return Ok(());
+    }
+    if algo == 35 {
+        if version == 4 || version == 6 {
+            return Ok(());
+        }
+        return fail_msg("ERR_ENCODING", "algorithm 35 requires OpenPGP version 4 or 6");
+    }
+    if version != 6 {
+        return fail_msg(
+            "ERR_ENCODING",
+            format!("RFC 9980 algorithm {algo} requires OpenPGP version 6"),
+        );
+    }
+    Ok(())
 }
 
 fn mpi_len(body: &[u8], pos: usize) -> Result<usize, CkvfError> {

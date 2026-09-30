@@ -34,6 +34,7 @@ export function algorithmSuiteFromAlgorithm(algorithm: string): "rsa" | "ecc" | 
     n.includes("ml-kem") ||
     n.includes("ml-dsa") ||
     n.includes("slhdsa") ||
+    n.includes("slh-dsa") ||
     n.includes("hqc") ||
     n.startsWith("pqc-")
   ) {

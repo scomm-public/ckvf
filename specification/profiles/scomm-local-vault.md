@@ -95,3 +95,17 @@ a generation that lowers status severity or removes a tombstone.
 No SComm origin is required to interpret or decrypt a container that follows
 this profile. The optional [vault-host.md](vault-host.md) profile is not
 this profile.
+
+## 8. Security identities
+
+Writers MAY store identity grouping in the non-critical payload extension
+`priv:scomm.security-identities`. The extension data is a JSON object:
+
+- `identities`: array of objects with `id`, `mailbox`, `experience`
+  (`personal` or `managed`), `protocol` (`openPgp` or `smime`), `assurance`,
+  `signingKeyIds`, `encryptionKeyIds`, and `defaultForMailbox`.
+
+The extension is not a Discovery resource and MUST NOT contain private key
+bytes. Readers that do not understand it MUST ignore it. A missing extension
+means identities are derived from key family: OpenPGP keys are personal,
+S/MIME keys are managed and self-issued. Derivation MUST NOT regenerate keys.

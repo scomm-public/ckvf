@@ -272,11 +272,15 @@ fn facade_create_encrypt_decrypt() {
 
 #[test]
 fn openpgp_alg30_public_material_length() {
-    let mut body = vec![0u8; 6 + 32 + 1952];
-    body[0] = 4;
-    body[5] = 30;
-    let tsk = encode_new_format_packet(5, &body);
-    let pub_key = canonical_openpgp_public_key(&[], Some(&tsk)).unwrap();
+    let mut signing = vec![0u8; 6 + 32 + 1952];
+    signing[0] = 4;
+    signing[5] = 30;
+    let tsk = encode_new_format_packet(5, &signing);
+    assert!(canonical_openpgp_public_key(&[], Some(&tsk)).is_err());
+    let mut kem = vec![0u8; 6 + 32 + 1184];
+    kem[0] = 4;
+    kem[5] = 35;
+    let pub_key = canonical_openpgp_public_key(&[], Some(&encode_new_format_packet(5, &kem))).unwrap();
     assert_eq!(pub_key[0] & 0x3f, 6);
 }
 

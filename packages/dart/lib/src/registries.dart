@@ -43,6 +43,7 @@ String? algorithmSuiteFromAlgorithm(String algorithm) {
       n.contains('ml-kem') ||
       n.contains('ml-dsa') ||
       n.contains('slhdsa') ||
+      n.contains('slh-dsa') ||
       n.contains('hqc') ||
       n.startsWith('pqc-')) {
     return 'pqc';

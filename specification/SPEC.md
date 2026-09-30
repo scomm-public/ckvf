@@ -1507,7 +1507,13 @@ Non-exhaustive starting set. Implementations MUST accept these strings and MAY a
 | Value | Meaning |
 | --- | --- |
 | `null` | Single algorithm in `algorithm` |
-| `openpgp-pqc-draft` | Placeholder only if a native suite name is not yet known; writers SHOULD use the suite identifier from [RFC 9980](https://www.rfc-editor.org/rfc/rfc9980.html) (PQC in OpenPGP) when storing OpenPGP PQC keys |
+| `ML-DSA-65+Ed25519` | RFC 9980 algorithm 30 |
+| `ML-DSA-87+Ed448` | RFC 9980 algorithm 31 |
+| `SLH-DSA-SHAKE-128s` | RFC 9980 algorithm 32 |
+| `SLH-DSA-SHAKE-128f` | RFC 9980 algorithm 33 |
+| `SLH-DSA-SHAKE-256s` | RFC 9980 algorithm 34 |
+| `ML-KEM-768+X25519` | RFC 9980 algorithm 35 |
+| `ML-KEM-1024+X448` | RFC 9980 algorithm 36 |
 | `smime-composite-draft` | Placeholder for composite PKIX/S/MIME suites |
 
 Writers SHOULD use the suite identifier from the native family specification rather than these placeholders when that specification has a stable name.

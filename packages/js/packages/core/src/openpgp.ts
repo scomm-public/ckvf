@@ -64,7 +64,7 @@ function publicBodyFromSecret(secretBody: Uint8Array): Uint8Array {
 }
 
 function publicMaterialLength(body: Uint8Array, pos: number, algo: number, version: number): number {
-  void version;
+  rejectRfc9980Version(version, algo);
   switch (algo) {
     case 1:
     case 2:
@@ -101,13 +101,33 @@ function publicMaterialLength(body: Uint8Array, pos: number, algo: number, versi
       return 57;
     case 30:
       return 32 + 1952;
+    case 31:
+      return 57 + 2592;
+    case 32:
+    case 33:
+      return 32;
+    case 34:
+      return 64;
     case 35:
       return 32 + 1184;
+    case 36:
+      return 56 + 1568;
     case 105:
     case 106:
       fail("ERR_ENCODING", "LibrePGP Kyber is not RFC 9980");
     default:
       fail("ERR_ENCODING", `unsupported OpenPGP algorithm ${algo}`);
+  }
+}
+
+function rejectRfc9980Version(version: number, algo: number): void {
+  if (algo < 30 || algo > 36) return;
+  if (algo === 35) {
+    if (version === 4 || version === 6) return;
+    fail("ERR_ENCODING", "algorithm 35 requires OpenPGP version 4 or 6");
+  }
+  if (version !== 6) {
+    fail("ERR_ENCODING", `RFC 9980 algorithm ${algo} requires OpenPGP version 6`);
   }
 }
 

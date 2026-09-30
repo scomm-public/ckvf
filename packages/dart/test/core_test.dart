@@ -191,13 +191,18 @@ void main() {
     expect(algorithmSuiteFromAlgorithm('rsa4096'), 'rsa');
   });
 
-  test('v4 OpenPGP public material length for RFC 9980 IDs 30/35', () {
-    // Tag 5 secret: v4, created, alg 30, then 32+1952 public octets.
-    final body = Uint8List(6 + 32 + 1952);
-    body[0] = 4;
-    body[5] = 30;
-    final tsk = encodeNewFormatPacket(5, body);
-    final pub = canonicalOpenPgpPublicKey(const [], tsk);
+  test('v4 OpenPGP algorithm 30 is rejected; algorithm 35 is accepted', () {
+    final v4Signing = Uint8List(6 + 32 + 1952);
+    v4Signing[0] = 4;
+    v4Signing[5] = 30;
+    expect(
+      () => canonicalOpenPgpPublicKey(const [], encodeNewFormatPacket(5, v4Signing)),
+      throwsA(isA<CkvfException>()),
+    );
+    final v4Kem = Uint8List(6 + 32 + 1184);
+    v4Kem[0] = 4;
+    v4Kem[5] = 35;
+    final pub = canonicalOpenPgpPublicKey(const [], encodeNewFormatPacket(5, v4Kem));
     expect(pub.first & 0x3f, 6);
   });
 }
