@@ -4,7 +4,7 @@
 
 CKVF is a lightweight, portable, user-controlled format for an independently encrypted vault of current and historical private keys bound to a verified Identity, authorized by a Master Signing Key (MSK), and synchronizable across devices without giving a hosting service access to plaintext keys.
 
-SComm.AI maintains this specification. Hosted Discovery / `pubkey.scomm.ai` store opaque ciphertext; they are not part of the container libraries in this repository.
+SComm.AI maintains this specification. Discovery publishes public keys. It does not store vault ciphertext, and a vault host is not required to open a container that has an offline slot. See [docs/adr](../docs/adr). Container libraries in this repository do not call Discovery or a vault host.
 
 ## Normative document
 
@@ -27,6 +27,7 @@ Read SPEC.md first. Companion documents do not override SPEC.md unless they are 
 | [profiles/reference-key-service.md](profiles/reference-key-service.md) | Non-normative reference key service |
 | [profiles/scomm-pubkey-migration.md](profiles/scomm-pubkey-migration.md) | Adapter notes for pubkey.scomm.ai |
 | [profiles/scomm-key-lifecycle.md](profiles/scomm-key-lifecycle.md) | How CKVF status and `DELETE_PRIVATE_KEY` map to the SComm key lifecycle |
+| [../docs/adr](../docs/adr) | SComm decisions: local vault, VEK root, offline unlock, untrusted sync |
 | [REFERENCE-IMPLEMENTATIONS.md](REFERENCE-IMPLEMENTATIONS.md) | Known implementations |
 | [ietf/README.md](ietf/README.md) | Future IETF packaging notes |
 | [ietf/draft-ckvf-community-00.md](ietf/draft-ckvf-community-00.md) | kramdown-rfc rendering of this draft |

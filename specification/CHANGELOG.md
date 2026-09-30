@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Architecture decisions in [docs/adr](../docs/adr): SComm does not host Vault ciphertext; the VEK stays the confidentiality root (no VRK layer); SComm unlock is offline; sync copies immutable generations to user storage; mailbox OTP does not decrypt a vault; device revocation rotates the VEK.
 - [profiles/scomm-key-lifecycle.md](profiles/scomm-key-lifecycle.md). SComm maps CKVF `status` to cryptographic lifecycle only. `delete-on-retire` is not used. Legacy `compromised` projects to `revoked` plus reason `KEY_COMPROMISE`.
 - Unlock methods `password-oprf-argon2id` and `recovery-code-oprf-argon2id` ([profiles/pepper-oprf.md](profiles/pepper-oprf.md)). A POPRF evaluation by the vault host is mixed into Argon2id, so a stolen container or host database cannot be attacked offline.
 - Extension `std:signing-key-retention`: delete a signing private key when it is retired; keep decryption keys.
