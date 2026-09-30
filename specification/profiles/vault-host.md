@@ -266,26 +266,24 @@ mailbox proof.
 
 Reads are also rate-limited per `identity_id`.
 
-## 5. Devices and pairing (addendum)
+## 5. Pairing (addendum)
 
-These routes are hosted today and are proposed for the next draft of this
-profile:
+The host does not keep a device-read-key registry. A device that holds the MSK signs reads with the `Msk` scheme. Pairing and recovery reads use a single-use token or an OTP grant because that device does not have the MSK yet.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/v1/vault/{vault_id}/devices` | Device inventory (read authorization) |
-| POST | `/v1/vault/{vault_id}/devices` | Register a device key (MSK-signed) |
-| DELETE | `/v1/vault/{vault_id}/devices/{device_id}` | Remove a device (MSK-signed) |
-| POST | `/v1/vault/{vault_id}/pairing` | Start CPace pairing; relays opaque messages between devices |
+| POST | `/v1/pairing/{session_id}` | New device creates a session. Body includes `b_retrieval_hash` = SHA-256 of a secret only that device keeps. Requires an open vault. |
+| GET | `/v1/pairing/{session_id}` | Pending status. Does not return the new device id. |
+| PUT | `/v1/pairing/{session_id}/response` | Approving device responds. `msk_signature` is verified against the Discovery MSK before the session becomes RESPONDED. |
+| POST | `/v1/pairing/{session_id}/retrieve` | Body `retrieval_secret`. Constant-time match against `b_retrieval_hash` returns the sealed envelope and a single-use read token. |
+
+Unknown, expired, completed, wrong-secret, and identity-mismatch sessions all answer `404 not_found`.
 
 Rules:
 
-- Every mutation carries an MSK proof whose nonce the host spends once per
-  `(identity_id, operation, nonce)`.
-- The host never sees the VEK, a KEK, or the MSK private key. Pairing
-  transfers them end to end between devices under a CPace session key.
-- High-risk mutations (removing the last device, MSK rebind) SHOULD be
-  delayed or confirmed on another device where the application supports it.
+- Every mutation carries an MSK proof whose nonce the host spends once per `(identity_id, operation, nonce)`.
+- The host never sees the VEK, a KEK, or the MSK private key. Pairing transfers them under a CPace session key.
+- Removing a device means the remaining device rotates the VEK and replaces the MSK. Dropping a slot alone does not revoke a device that already unwrapped the VEK.
 
 ## 6. Reference client
 
