@@ -108,3 +108,14 @@ The engine speaks only the operations above: list generations, get, put if
 absent, get head, compare-and-swap head. A local directory is the first
 transport. WebDAV and other providers are adapters. None of them is
 `vault.scomm.ai`, and none of them is Discovery.
+
+A WebDAV adapter maps those operations onto HTTP. `PUT` of
+`g/{generation}.json` uses `If-None-Match: *`. A `412` whose body differs is
+tampering. `PUT` of `head.json` uses `If-None-Match: *` when the head is
+absent, and `If-Match: "<generation_hash>"` when replacing it.
+
+Direct device transfer is not a sync write. The new device writes a CPace
+request to `{root}/pair/{session}.json`. The approving device answers in
+that file with the container and a Vault Encryption Key sealed to the CPace
+key. A QR code carries `scomm-pair:v2` so the approving device can find the
+session. Both devices must see the folder. The code does not upload the vault.
