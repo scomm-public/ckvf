@@ -1,0 +1,25 @@
+{
+  "id": "scomm-local-vault",
+  "name": "SComm local vault",
+  "spec": "draft-0.1",
+  "container_version": "1.0",
+  "description": "Offline VEK unwrap, fail-closed critical extensions, generation chain, and merge. Does not call a vault host. Pepper-only unlock is outside this profile.",
+  "rules": [
+    "password-unlock opens with no network",
+    "wrong-password fails closed",
+    "unknown-critical-extension fails with ERR_CRITICAL_EXTENSION (device-bound custody uses this rule)",
+    "stale-generation is not adopted as a newer head",
+    "merge status severity is monotonic (compromised > revoked > retired > active)",
+    "merge-conflict fails with ERR_MERGE_MSK rather than last-writer-wins"
+  ],
+  "required_vectors": [
+    "password-unlock",
+    "wrong-password",
+    "tampered-ciphertext",
+    "unknown-critical-extension",
+    "stale-generation",
+    "merge",
+    "merge-conflict",
+    "generation-increment"
+  ]
+}

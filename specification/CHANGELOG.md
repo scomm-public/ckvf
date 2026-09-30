@@ -9,7 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Architecture decisions in [docs/adr](../docs/adr): SComm does not host Vault ciphertext; the VEK stays the confidentiality root (no VRK layer); SComm unlock is offline; sync copies immutable generations to user storage; mailbox OTP does not decrypt a vault; device revocation rotates the VEK.
-- [profiles/scomm-key-lifecycle.md](profiles/scomm-key-lifecycle.md). SComm maps CKVF `status` to cryptographic lifecycle only. `delete-on-retire` is not used. Legacy `compromised` projects to `revoked` plus reason `KEY_COMPROMISE`.
+- [profiles/scomm-local-vault.md](profiles/scomm-local-vault.md) and [profiles/untrusted-sync.md](profiles/untrusted-sync.md). SComm writers require an offline VEK slot, reject pepper-only vaults, and sync immutable generations to untrusted storage.
+- Extension `std:key-custody` for portable, device-bound, and external private keys.
+- [profiles/scomm-key-lifecycle.md](profiles/scomm-key-lifecycle.md). SComm maps CKVF `status` to cryptographic lifecycle only. `delete-on-retire` is not used. Legacy `compromised` projects to `revoked` plus reason `KEY_COMPROMISE`. Sync cannot lower status severity or clear a tombstone.
 - Unlock methods `password-oprf-argon2id` and `recovery-code-oprf-argon2id` ([profiles/pepper-oprf.md](profiles/pepper-oprf.md)). A POPRF evaluation by the vault host is mixed into Argon2id, so a stolen container or host database cannot be attacked offline.
 - Extension `std:signing-key-retention`: delete a signing private key when it is retired; keep decryption keys.
 - Vault host: `POST /v1/vault/open` and `POST /v1/vault/{vault_id}/msk` with grant and MSK proof rules, `POST /v1/pw-oprf/evaluate`, read authorization, a devices and pairing addendum, and `scomm_vault_client` as the reference client.
@@ -17,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- [profiles/vault-host.md](profiles/vault-host.md) is an optional operator profile. SComm does not operate it.
 - SPEC.md §9.6 states that retire and revoke do not delete `private_key`, and that `status` is not publication or destruction.
 - The vault grant text adds `iss`, `aud`, `kid`, `amr`, and `idp`, matching the Discovery Protocol.
 - `vault_id` on the vault host is 16 random bytes in base64url, as in the container.

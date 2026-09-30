@@ -21,7 +21,7 @@ Attacker capabilities considered: local file access, network attacker on sync, m
 | Stale device | Merge: no silent LWW; stale MUST NOT delete newer keys | Prompt user on conflict; retire lost devices |
 | Lost device | Multiple slots; `REMOVE_DEVICE` | Inventory devices; password recovery path |
 | Compromised MSK | Ownership proof to replace; no historical MSK private keys | Detect anomaly; notify Identity; revoke published keys |
-| Compromised encryption key (VEK) | Slot isolation does not help if VEK leaked | Rotate via future extension; treat all payload keys as exposed |
+| Compromised encryption key (VEK) | Rotate the VEK on device revocation (local-vault profile); GCM prevents undetected modification without VEK | Minimize unlocked time; process isolation; treat VEK leak as full vault compromise of that generation |
 | Short Key ID collision | Absolute Key ID authoritative; tolerate collisions | UI must not key only on short IDs |
 | Malicious imported key | Parser limits; canonical SPKI/packet hashing | Family-native validation before trust/publish |
 | Malformed vault | Fail closed; reject extra core JSON; GCM verify | Do not “repair” ciphertext |
@@ -107,9 +107,9 @@ Attacker capabilities considered: local file access, network attacker on sync, m
 
 **Impact.** All payload secrets for that VEK are readable. Unlock slots do not compartmentalize keys from each other.
 
-**CKVF.** v1.0 has no mandatory VEK rotation; extensions MAY define it. GCM prevents undetected modification without VEK.
+**CKVF.** Device revocation in the SComm local-vault profile samples a new VEK, re-encrypts the single payload, and re-wraps remaining slots. A copy of an older generation remains decryptable with the old VEK's slots. GCM prevents undetected modification without the VEK.
 
-**Not CKVF.** Minimize unlocked time; process isolation; treat VEK leak as full vault compromise.
+**Not CKVF.** Minimize unlocked time; process isolation. Revocation does not erase a VEK the device already extracted.
 
 ## 10. Short Key ID collision
 
@@ -194,3 +194,25 @@ Attacker capabilities considered: local file access, network attacker on sync, m
 ## 20. Residual risk
 
 CKVF does not make stolen passwords safe, does not make email a high-assurance authenticator, and does not survive VEK extraction from a running client. Those are explicit non-goals. The format’s job is a precise, mergeable, independently encrypted vault that a hostile host cannot read.
+
+## 21. Additional adversaries (SComm local vault)
+
+These restate the format rules for the SComm deployment. They do not add primitives.
+
+| Adversary | What they obtain | What they do not obtain |
+| --- | --- | --- |
+| Stolen CKVF file | Ciphertext, slot methods, Argon2 parameters, generation numbers | VEK, unless they also have an unlock secret or the device KEK |
+| Malicious storage provider | Object names, ciphertext, sizes, timing | Plaintext keys, VEK, recovery secret |
+| Compromised sync account | Ability to substitute or roll back objects, subject to client checks | A client that remembers the head refuses `ERR_ROLLBACK` and still needs an unlock secret |
+| Stale or rolled-back storage | An older valid container | Acceptance as the current head |
+| Revoked device | Any secret it decrypted before revocation | The ability to publish a new head that restores its slot or lowers lifecycle severity |
+| Stolen device | Device KEK, if the platform keystore is unlocked or extracted | Other devices' KEKs; a VEK rotated after revocation |
+| Compromised mailbox | Ability to receive OTP and replace the directory MSK | The VEK. OTP is not a KDF input |
+| Compromised Discovery control (MSK) | Authority to sign directory changes and vault mutations **after** the attacker can also unlock a copy | The VEK, from the MSK alone |
+| Compromised Discovery service | Public keys, armed MSK public key, grant issuance | Vault ciphertext and the VEK. Discovery does not store them |
+| Lost recovery passphrase and all device slots | Nothing further from SComm | The payload. SComm has no escrow key |
+| Modified CKVF object | A file the client rejects when `generation_hash` or AEAD fails | A silent plaintext change |
+| Concurrent offline devices | Forked generations | A silent last-writer-wins merge. SPEC.md §12 still applies |
+
+Compromise of Discovery alone MUST NOT enable decryption of a vault.
+

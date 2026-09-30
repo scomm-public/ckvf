@@ -1,7 +1,11 @@
 # Vault host
 
-CKVF ciphertext is stored by the vault host. This profile is the hosted
-record API. It is not a Discovery Document and it is not part of
+**Status:** Optional operator profile. **Not operated by SComm.**
+
+An operator MAY store CKVF ciphertext and MAY evaluate pepper OPRF. SComm
+clients follow [scomm-local-vault.md](scomm-local-vault.md) and
+[untrusted-sync.md](untrusted-sync.md) instead, and do not call the origins
+below. This profile is not a Discovery Document and it is not part of
 [`discovery-protocol`](https://github.com/scomm-public/discovery-protocol).
 
 | Mode | Origin |

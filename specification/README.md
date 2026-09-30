@@ -27,6 +27,8 @@ Read SPEC.md first. Companion documents do not override SPEC.md unless they are 
 | [profiles/reference-key-service.md](profiles/reference-key-service.md) | Non-normative reference key service |
 | [profiles/scomm-pubkey-migration.md](profiles/scomm-pubkey-migration.md) | Adapter notes for pubkey.scomm.ai |
 | [profiles/scomm-key-lifecycle.md](profiles/scomm-key-lifecycle.md) | How CKVF status and `DELETE_PRIVATE_KEY` map to the SComm key lifecycle |
+| [profiles/scomm-local-vault.md](profiles/scomm-local-vault.md) | SComm product profile: offline VEK slots, custody, no hosted vault |
+| [profiles/untrusted-sync.md](profiles/untrusted-sync.md) | Immutable generation sync on user-controlled storage |
 | [../docs/adr](../docs/adr) | SComm decisions: local vault, VEK root, offline unlock, untrusted sync |
 | [REFERENCE-IMPLEMENTATIONS.md](REFERENCE-IMPLEMENTATIONS.md) | Known implementations |
 | [ietf/README.md](ietf/README.md) | Future IETF packaging notes |

@@ -49,7 +49,20 @@ written by this profile. See [registries/extensions.md](../../registries/extensi
 - A sign-only record with `private_key: null` MAY still verify using the
   directory public key. Verification does not require the private key.
 
-## 4. Out of scope
+## 4. Sync dominance
+
+Synchronization MUST NOT apply an older generation in a way that:
+
+- changes `revoked` or `compromised` to `retired` or `active`;
+- changes `retired` to `active`;
+- removes a tombstone;
+- sets `private_key` from null back to bytes after `DELETE_PRIVATE_KEY`.
+
+A device-bound or external key (`std:key-custody`) is not destroyed merely
+because `private_key` is null. Destruction still requires a tombstone. See
+[scomm-local-vault.md](scomm-local-vault.md).
+
+## 5. Out of scope
 
 This profile does not change container version `1.0`, the `status` enum, or
-MSK arm and replace.
+MSK arm and replace. It does not add a VRK or a second encryption root.

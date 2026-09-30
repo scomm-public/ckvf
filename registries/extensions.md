@@ -5,6 +5,7 @@ Community registry of extension `id` values. SPEC.md Sections 4.6, 13, and Appen
 | id | critical typical | Specification |
 | --- | --- | --- |
 | `std:signing-key-retention` | `false` | [§ std:signing-key-retention](#stdsigning-key-retention) below |
+| `std:key-custody` | `true` when not portable | [§ std:key-custody](#stdkey-custody) below |
 
 ## std:signing-key-retention
 
@@ -51,6 +52,43 @@ MUST NOT set `policy` to `delete-on-retire`. Retirement and
 `DELETE_PRIVATE_KEY` stay separate operations. A signing private key MAY
 be destroyed later by an explicit `DELETE_PRIVATE_KEY`. An encryption
 private key is unchanged by this extension in every profile.
+
+## std:key-custody
+
+Location: payload `extensions` when `data.custody` is `portable`. Payload
+`critical_extensions` when `data.custody` is `device-bound` or `external`.
+
+```json
+{
+  "id": "std:key-custody",
+  "critical": true,
+  "data": {
+    "absolute_key_id": "<base64url SHA-256 of the canonical public key>",
+    "custody": "device-bound",
+    "provider": "platform-keystore",
+    "key_ref": "<opaque provider reference>"
+  }
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `absolute_key_id` | MUST equal the key record's `absolute_key_id` |
+| `custody` | `portable`, `device-bound`, or `external` |
+| `provider` | Optional registry string naming the holder. Absent for `portable` |
+| `key_ref` | Opaque reference. Required for `device-bound` and `external`. Not private-key bytes |
+
+`portable` is the default when the extension is absent, and `private_key`
+follows SPEC.md §9. `device-bound` and `external` MUST set `private_key` to
+JSON `null` and MUST be critical. A tombstone, not this extension, means the
+private key was destroyed.
+
+Merge keeps the extension. It MUST NOT fill `private_key` on a
+`device-bound` or `external` record from another generation. Moving a
+device-bound key to another device creates a new key record.
+
+SComm writers follow
+[scomm-local-vault.md](../specification/profiles/scomm-local-vault.md).
 
 ## Identifier syntax
 
